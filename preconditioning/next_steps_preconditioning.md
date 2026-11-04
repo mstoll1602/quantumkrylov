@@ -135,7 +135,7 @@ Realistic effort: about 2–3 months part time. Suggested leads are proposals, n
 
 All paths are relative to this folder (`preconditioning/`).
 
-- Paper: `paper/quantum_preconditioning.tex` / `.pdf`
+- Paper: `paper/quantum_preconditioning.tex` / `.pdf`; supplement `paper/nla_for_quantum.tex` (how block encodings are realized)
 - Checks (in `code/`; keep them together, they import each other):
   - `qp_poisson_check.py` (Tables 1, 4)
   - `qp_bpx_weights.py` (Table 2)
@@ -143,4 +143,5 @@ All paths are relative to this folder (`preconditioning/`).
   - `qp_heat_periodic_check.py` (Table 5; `global` / `freq`)
   - `qp_elements_qk.py`, `qp_elements_qk_extra.py` (Q_k generality: factorization, commuting lemma, isometry, under-integration, mapped geometry; Remark 3.1)
   - `qp_elements_q2_kron.py` (direct 2D Q2 assembly against the Kronecker form)
+  - `qp_block_encoding_rules.py` (explicit unitary realizations of all block-encoding rules; supplement `paper/nla_for_quantum.tex`)
 - Background: `../krylov_note/` (note, `dead_ends.md`), `../archive/rational_krylov/` (rational Krylov, parked; `prior_art.md`)

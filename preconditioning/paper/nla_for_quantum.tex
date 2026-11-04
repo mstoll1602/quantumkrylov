@@ -1,0 +1,386 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\G}{\mathcal{G}}
+\newcommand{\J}{\mathcal{J}}
+\newtheorem{lemma}{Lemma}
+
+\title{Block encodings for numerical linear algebraists\\[2pt]
+\large How the combination rules are realized\\
+(supplement to ``Preconditioning for quantum linear solvers in PDE-constrained optimization'')}
+\author{Martin Stoll \and John W. Pearson}
+\date{Working draft, November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Section~2 of the paper lists how block encodings combine: products, Kronecker
+products, linear combinations, stacking, concatenation and sparse matrices,
+each with its subnormalization. This supplement shows, in pure matrix
+terms, how each rule is realized as an explicit unitary matrix, and why the
+subnormalizations are what they are. Every construction was built as a dense
+matrix and checked numerically, with the script
+\texttt{qp\_block\_encoding\_rules.py} in the folder \texttt{preconditioning/code}
+(Table~\ref{tab:check}).
+\end{abstract}
+
+\section{Conventions}
+
+\paragraph{Registers are Kronecker factors.} A quantum computer with $q$
+qubits acts on $\C^2\otimes\cdots\otimes\C^2=\C^{2^q}$. A \emph{register} is a group of
+these factors. A \emph{circuit} is a product of unitary matrices, each acting
+on a few factors and as the identity on the rest. Two operations are free:
+\begin{itemize}
+\item permuting tensor factors, which is only a relabelling of qubits;
+\item adding fresh factors that start in the first basis vector $e_0$.
+\end{itemize}
+
+\paragraph{Ordering.} We write extra registers (ancillas, index registers) as
+the \emph{outer} Kronecker factors and the system as the innermost one. A
+vector in $\C^2\otimes\C^n$ is therefore a stacked vector $[v_0;v_1]$, and $e_0\otimes v=[v;0]$.
+
+\paragraph{Block encodings.} A unitary $U\in\C^{2^an\times2^an}$ is a block encoding of
+$A\in\C^{n\times n}$ with subnormalization $\alpha$ if its leading block is $A/\alpha$:
+\[
+(e_0^T\otimes I_n)\,U\,(e_0\otimes I_n)=A/\alpha,\qquad\text{i.e.}\qquad
+U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
+\]
+Applying $U$ to $[v;0]$ gives $[Av/\alpha;\ w]$ for some $w$. Measuring the
+ancilla and keeping the outcome ``$0$'' (\emph{postselection}) leaves
+$Av/\|Av\|$, with probability $\|Av\|^2/(\alpha\|v\|)^2$.
+
+For rectangular $A\in\C^{m\times n}$ the rows and the columns are selected by
+different projections. These are $P_{\rm out}$ and $P_{\rm in}$, both with
+orthonormal columns, and we require $P_{\rm out}^*UP_{\rm in}=A/\alpha$.
+
+\paragraph{Why $\alpha\ge\|A\|$.} Every block of a unitary matrix has norm at
+most one, so $\|A/\alpha\|\le1$. The subnormalization is the price of
+embedding a non-unitary matrix in a unitary one. It enters the cost of
+everything downstream: success probabilities, and the degree of QSVT
+polynomials.
+
+\section{A single matrix: the unitary dilation}
+
+\begin{lemma}[Halmos dilation]
+Let $\|X\|\le1$. Then
+\[
+U=\begin{bmatrix} X & (I-XX^*)^{1/2}\\ (I-X^*X)^{1/2} & -X^*\end{bmatrix}
+\]
+is unitary.
+\end{lemma}
+\begin{proof}
+Use $X^*f(XX^*)=f(X^*X)X^*$ for $f(t)=(1-t)^{1/2}$. This makes the off-diagonal
+blocks of $U^*U$ vanish, and
+\[
+U^*U=\begin{bmatrix}X^*X+(I-X^*X) & 0\\ 0 & (I-XX^*)+XX^*\end{bmatrix}=I .
+\]
+\end{proof}
+
+So every $A$ has a block encoding with $\alpha=\|A\|$ and one ancilla qubit. The
+dilation is dense, however, and has no short circuit in general. The point
+of the rules below is to build block encodings of \emph{structured} matrices
+from small, cheap pieces. The price is a subnormalization that may exceed
+$\|A\|$.
+
+\section{The ideal subnormalization and what circuits achieve}\label{sec:ideal}
+
+\paragraph{Definition.} The \emph{ideal subnormalization} of $A$ is $\alpha=\|A\|$. It is a
+lower bound for every block encoding, and the Halmos dilation attains it.
+The dilation, however, is dense and has no efficient circuit in general.
+Efficient block encodings are assembled from structured pieces by the
+rules of the following sections. At each step the subnormalization can
+exceed the norm. The table below summarizes when a rule is tight, i.e.
+when its $\alpha$ equals the norm of the result.
+
+\begin{center}\small
+\begin{tabular}{@{}lp{5.4cm}p{5.6cm}@{}}
+\toprule
+rule & $\alpha$ versus norm & tight when \\
+\midrule
+$AB$ & $\alpha_A\alpha_B\ge\|A\|\|B\|\ge\|AB\|$ & $A$ is maximal on the range of $B$'s top singular vector\\
+$A\otimes B$ & $\alpha_A\alpha_B$ vs.\ $\|A\otimes B\|=\|A\|\|B\|$ & always (if $\alpha_A,\alpha_B$ are tight)\\
+$\sum_jc_jA_j$ & $\sum_j|c_j|\alpha_j\ge\|\sum_jc_jA_j\|$ & all terms maximal on a common vector, phases aligned\\
+$[A_0;\dots;A_{k-1}]$ & $(\sum_j\alpha_j^2)^{1/2}$ vs.\ $\|\sum_jA_j^*A_j\|^{1/2}$ & all $A_j$ maximal on a common input vector\\
+$[A_0,\dots,A_{k-1}]$ & $(\sum_j\alpha_j^2)^{1/2}$ vs.\ $\|\sum_jA_jA_j^*\|^{1/2}$ & all $A_j$ maximal on a common output vector\\
+sparse $A$ & $a_{\max}\sqrt{s_rs_c}$ (Schur-test bound) vs.\ $\|A\|$ & rarely\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{The common mechanism.} A loss occurs when the pieces attain
+their norms on \emph{different} vectors. In PDE discretizations the typical
+conflict is between oscillatory vectors, which maximize stiffness and
+gradient operators, and smooth vectors, which maximize mass and
+prolongation operators.
+
+\paragraph{Examples.}
+\begin{itemize}
+\item \emph{A tight LCU.} $I-S$ with the cyclic shift $S$ has $\alpha=2=\|I-S\|$
+  for even $n$: both terms are maximal on the alternating vector, with
+  aligned signs.
+\item \emph{An LCU that loses a factor $2$.} The 2D stiffness matrix
+  $K=K_1\otimes M_1+M_1\otimes K_1$ as an LCU of two Kronecker products has
+  $\alpha=2\|K_1\|\|M_1\|\to8$, while $\|K\|\to4$ ($Q_1$, $h=2^{-L}$; the ratio is
+  $1.993$, $2.000$, $2.000$, $2.000$ for $L=4,6,8,10$). $\|K_1\|$ is attained by the
+  most oscillatory sine vector, $\|M_1\|$ by the smoothest, and no single
+  vector makes both terms maximal.
+\item \emph{A product that loses $2^{L-\ell}$.} $\|F_1\|\|P_\ell\|/\|F_1P_\ell\|$ (gradient factor
+  times prolongation) equals $2^{L-\ell}$ up to the coarsest levels (paper,
+  Table~4), for the same reason. The commuting lemma of the paper removes
+  this loss by applying the gradient on the coarse level first.
+\item \emph{Concatenation over levels loses $\sqrt L$.} For
+  $G=[T_1G_1,\dots,T_LG_L]$ the rule gives $\alpha\approx\sqrt L\max_\ell\|G_\ell\|$. Multilevel
+  theory (a strengthened Cauchy--Schwarz inequality between levels) keeps
+  $\|G\|=O(1)$, because different levels mostly act on different frequency
+  bands. Their output ranges are far from aligned, so the rule is not tight.
+\item \emph{Sparse access loses a factor 3} in the random example of
+  Table~\ref{tab:check}: $\alpha=15.3$ against $\|A\|=5.1$.
+\end{itemize}
+
+\paragraph{What this means for the paper.} The preconditioned KKT matrix is
+encoded as $\B=\G^T\J\G$ with $\G=I_2\otimes G$, where
+$G=[F_{\rm val}R;\beta^{1/4}F_\nabla R]$ maps multilevel coefficients to values and
+gradients at quadrature points. The reflection $\J$ has $\alpha=1$, so
+$\alpha_\B=\alpha_G^2$.
+\begin{itemize}
+\item \emph{Ideal case:} $\alpha_G=\|G\|$, giving $\alpha_\B=\|G\|^2=\|R^TA_\beta R\|\le c_1$. The paper's
+  Table~1 has $\|G\|\approx1.7$--$2.7$, hence $\kappa_\alpha(\B)\approx5$--$10$.
+\item \emph{Even the ideal case is above $\|\B\|$:} $\|\B\|\le\|G\|^2$ since $\|\J\|=1$. This
+  is the price of writing an indefinite matrix with a reflection in the
+  middle. Here both quantities are $O(1)$.
+\item \emph{Actual construction:} $\|G\|\le\alpha_G\le C_d\sqrt L$, with losses from three
+  places: the 1D LCUs, the stack of values and gradients, and the
+  concatenation over levels. The pessimistic sparse-access constant is
+  $C_3\approx45$.
+\item \emph{Why measuring $\alpha_G$ matters:} it enters the cost squared. For $d=3$
+  the gap between the bounds is up to $(45\sqrt L/2)^2\approx500L$. Building the
+  encoding explicitly and measuring $\alpha_G$ (to-do item 1.1) decides where
+  between the two bounds we are.
+\end{itemize}
+
+\section{Products: fresh ancillas}
+
+Let $U_A=\begin{bmatrix}X_A&Y_A\\Z_A&*\end{bmatrix}$ and $U_B=\begin{bmatrix}X_B&Y_B\\Z_B&*\end{bmatrix}$
+be block encodings with $X_A=A/\alpha_A$ and $X_B=B/\alpha_B$.
+
+\paragraph{The naive product fails.} If both use the \emph{same} ancilla,
+\[
+U_AU_B=\begin{bmatrix}X_AX_B+Y_AZ_B & *\\ * & *\end{bmatrix}.
+\]
+The ``garbage'' $Z_Bv$ that $U_B$ moves into the ancilla-1 block is
+brought back into the leading block by $Y_A$.
+
+\paragraph{The construction.} Give each factor its own ancilla. Order the
+space as (ancilla of $A$) $\otimes$ (ancilla of $B$) $\otimes$ system. Let $\widetilde U_A$
+act as $U_A$ on the ancilla of $A$ and the system, and as the identity on the
+ancilla of $B$; define $\widetilde U_B$ in the same way. Then
+\[
+\big(e_0\otimes e_0\otimes I\big)^T\,\widetilde U_A\widetilde U_B\,\big(e_0\otimes e_0\otimes I\big)=X_AX_B=\frac{AB}{\alpha_A\alpha_B}.
+\]
+The reason is that $\widetilde U_B$ puts its garbage into the block where the ancilla
+of $B$ equals $1$. $\widetilde U_A$ never touches that ancilla, so the garbage
+stays orthogonal to the leading block.
+\begin{itemize}
+\item \emph{Cost:} one call to each factor, plus the extra ancillas.
+\item \emph{Subnormalization:} $\alpha_A\alpha_B$, which can be much larger than
+  $\|AB\|$. This is the mechanism behind the failure of the naive product
+  encoding of $\widetilde R^T\mathcal A\widetilde R$ in the paper.
+\end{itemize}
+
+\section{Kronecker products}
+
+$U_A\otimes U_B$ acts on (ancilla$_A$, system$_A$, ancilla$_B$, system$_B$). After the
+free permutation to (ancilla$_A$, ancilla$_B$, system$_A$, system$_B$), its leading
+block is
+\[
+X_A\otimes X_B=\frac{A\otimes B}{\alpha_A\alpha_B}.
+\]
+No calls are combined at all: the two circuits run side by side on disjoint
+qubits. This is why the Kronecker structure of $Q_1$ matrices on Cartesian
+grids is so valuable. A $d$-dimensional factor costs $d$ one-dimensional
+circuits.
+
+\section{Linear combinations of unitaries (LCU)}
+
+Let $\sum_{j=0}^{k-1}c_jA_j$ be given, with block encodings $U_j$ of $A_j$
+(subnormalization $\alpha_j$), $k=2^m$ terms, and $c_j>0$. Complex phases of
+$c_j$ are absorbed into $U_j$. Let $s=\sum_jc_j\alpha_j$.
+\begin{itemize}
+\item \emph{PREPARE:} a unitary $V\in\C^{k\times k}$ with first column
+  $Ve_0=p$, where $p_j=\sqrt{c_j\alpha_j/s}$. It acts on an index register of
+  $m$ qubits.
+\item \emph{SELECT:} the block-diagonal unitary
+  $\mathrm{SEL}=\operatorname{blkdiag}(U_0,\dots,U_{k-1})$, i.e. ``apply $U_j$ if the index
+  register is $e_j$''.
+\end{itemize}
+Then
+\[
+W=(V^*\otimes I)\,\mathrm{SEL}\,(V\otimes I)
+\]
+has the leading block (index $0$, ancilla $0$)
+\[
+\sum_j\bar p_j\,p_j\,\frac{A_j}{\alpha_j}=\sum_j\frac{c_j\alpha_j}{s}\frac{A_j}{\alpha_j}=\frac1s\sum_jc_jA_j .
+\]
+So $\alpha=\sum_jc_j\alpha_j$.
+
+\paragraph{Example: the difference matrix.} Let $S$ be the cyclic shift, a
+permutation matrix and hence unitary, with $\alpha=1$. With $k=2$, $p=\frac1{\sqrt2}(1,1)$,
+$V=H=\frac1{\sqrt2}\begin{bmatrix}1&1\\1&-1\end{bmatrix}$ and SEL $=\operatorname{blkdiag}(I,-S)$,
+\[
+W=(H\otimes I)\begin{bmatrix}I&0\\0&-S\end{bmatrix}(H\otimes I)=\frac12\begin{bmatrix}I-S&I+S\\I+S&I-S\end{bmatrix},
+\]
+a block encoding of $I-S$ with $\alpha=2$. The 1D quadrature factors $F_0$ and $F_1$
+of the paper are built this way. They are two-term combinations of shifts
+with diagonal weights.
+
+\section{Stacking}
+
+The stack $\begin{bmatrix}A_0\\ \vdots\\ A_{k-1}\end{bmatrix}\in\C^{kn\times n}$ is tall, and the index
+register becomes part of the \emph{output}. Take $V$ with $Ve_0=p$, where
+$p_j=\alpha_j/N$ and $N=\big(\sum_j\alpha_j^2\big)^{1/2}$, and
+\[
+W=\mathrm{SEL}\,(V\otimes I).
+\]
+On an input $e_0\otimes e_0\otimes v$ (index $0$, ancilla $0$), $V$ produces
+$\sum_jp_j\,e_j\otimes e_0\otimes v$. SEL then applies $U_j$ in branch $j$. Keeping
+ancilla $0$ but \emph{all} index values gives
+\[
+\sum_je_j\otimes\frac{p_j}{\alpha_j}A_jv=\frac1N\begin{bmatrix}A_0v\\ \vdots\\ A_{k-1}v\end{bmatrix}.
+\]
+This is a rectangular block encoding with $P_{\rm in}$: (index $0$, ancilla $0$), and
+$P_{\rm out}$: (any index, ancilla $0$). Its subnormalization is
+$N=\big(\sum_j\alpha_j^2\big)^{1/2}$. In the paper this stacks the value rows and
+the $d$ gradient rows of $G_\ell$.
+
+\section{Concatenation}
+
+The concatenation $[A_0,\dots,A_{k-1}]\in\C^{n\times kn}$ is wide, and the index register is
+part of the \emph{input}. With the same $V$,
+\[
+W=(V^*\otimes I)\,\mathrm{SEL}.
+\]
+An input $\sum_je_j\otimes e_0\otimes v_j$ goes to $\sum_je_j\otimes(e_0\otimes A_jv_j/\alpha_j+\dots)$.
+Applying $V^*$ and keeping index $0$ and ancilla $0$ gives
+\[
+\sum_j\bar p_j\frac{A_jv_j}{\alpha_j}=\frac1N\sum_jA_jv_j .
+\]
+So $\alpha=N=\big(\sum_j\alpha_j^2\big)^{1/2}\le\sqrt k\max_j\alpha_j$. The factor $\sqrt k$ is
+the \emph{price of summing}: the vectors $A_jv_j$ add up coherently only in
+the one index branch that is kept. In the paper this is the concatenation
+over the $L$ levels, $G=[T_1G_1,\dots,T_LG_L]$. It is the source of
+$\alpha_G=O(\sqrt L)$, and the reason the paper asks whether the $\sqrt L$ can be
+avoided.
+
+\section{Sparse matrices}
+
+Let $A\in\C^{n\times n}$ have at most $s_r$ nonzeros per row and $s_c$ per column, and
+let $a_{\max}=\max|a_{ij}|$. Work in $\C^n\otimes\C^n\otimes\C^2$ and define, for each row
+$i$ and column $j$, the unit vectors
+\[
+\psi_i=\frac1{\sqrt{s_r}}\sum_{j\in\mathcal R_i}e_i\otimes e_j\otimes\Big(\frac{\bar a_{ij}}{a_{\max}}e_0+\sqrt{1-\tfrac{|a_{ij}|^2}{a_{\max}^2}}\,e_1\Big),\qquad
+\phi_j=\frac1{\sqrt{s_c}}\sum_{i\in\mathcal C_j}e_i\otimes e_j\otimes e_0 .
+\]
+Here $\mathcal R_i$ ($\mathcal C_j$) is the nonzero pattern of row $i$ (column $j$), padded
+with zero entries to exactly $s_r$ ($s_c$) indices.
+\begin{itemize}
+\item The $\psi_i$ are orthonormal, because they differ in the first factor.
+  The $\phi_j$ are orthonormal, because they differ in the second.
+\item $\psi_i^*\phi_j=a_{ij}/(a_{\max}\sqrt{s_rs_c})$.
+\end{itemize}
+With the isometries $T_L=[\psi_1,\dots,\psi_n]$ and $T_R=[\phi_1,\dots,\phi_n]$,
+\[
+\frac{A}{a_{\max}\sqrt{s_rs_c}}=T_L^*T_R .
+\]
+Completing $T_L$ and $T_R$ to unitaries $U_L=[T_L,\,T_L^\perp]$ and
+$U_R=[T_R,\,T_R^\perp]$ gives the block encoding $W=U_L^*U_R$, with
+$\alpha=a_{\max}\sqrt{s_rs_c}$.
+
+\paragraph{What ``entries computable by a circuit'' means.} $U_R$ maps $e_j$ to
+$\phi_j$: it must produce the positions of the nonzeros of column $j$ (a
+column-index oracle). $U_L$ maps $e_i$ to $\psi_i$: it must produce the
+positions in row $i$, and rotate a flag qubit by an angle determined by
+$a_{ij}$ (a value oracle). For structured matrices, such as stencils on
+Cartesian grids, these are small arithmetic circuits on indices. For
+unstructured meshes they need lookup tables, which is the data-access
+problem noted in the paper.
+
+\paragraph{The constant.} $\alpha=a_{\max}\sqrt{s_rs_c}$ is exactly the Schur-test bound for
+$\|A\|$, so it is never smaller than $\|A\|$, and often noticeably larger. In
+the random example of Table~\ref{tab:check}, $\alpha=15.3$ against $\|A\|=5.1$. This is
+the origin of the pessimistic constant $C_d$ in the paper's
+Proposition~3.7, and of the suggestion to use Kronecker and LCU
+constructions instead of generic sparse access.
+
+\section{Summary of costs}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{llll}
+\toprule
+rule & realization & extra qubits & subnormalization\\
+\midrule
+single $A$ (dense) & Halmos dilation & 1 & $\|A\|$\\
+$AB$ & $\widetilde U_A\widetilde U_B$, fresh ancillas & $a_A+a_B$ & $\alpha_A\alpha_B$\\
+$A\otimes B$ & $U_A\otimes U_B$, permuted & $a_A+a_B$ & $\alpha_A\alpha_B$\\
+$\sum_jc_jA_j$ & $(V^*\otimes I)\,\mathrm{SEL}\,(V\otimes I)$ & $\log_2k+\max a_j$ & $\sum_jc_j\alpha_j$\\
+$[A_0;\dots;A_{k-1}]$ & $\mathrm{SEL}\,(V\otimes I)$ & $\log_2k+\max a_j$ & $(\sum_j\alpha_j^2)^{1/2}$\\
+$[A_0,\dots,A_{k-1}]$ & $(V^*\otimes I)\,\mathrm{SEL}$ & $\log_2k+\max a_j$ & $(\sum_j\alpha_j^2)^{1/2}\le\sqrt k\max\alpha_j$\\
+sparse $A$ & $U_L^*U_R$ & $\log_2n+1$ & $a_{\max}\sqrt{s_rs_c}$\\
+isometry $T$ & $[T,\,T^\perp]$ & as needed & $1$\\
+\bottomrule
+\end{tabular}
+\caption{The combination rules. SEL needs \emph{controlled} versions of the $U_j$,
+which typically cost a small constant factor more gates.}
+\label{tab:rules}
+\end{table}
+
+\section{\texorpdfstring{How the rules build $G$ in the paper}{How the rules build G in the paper}}
+
+$G=[T_1G_1,\dots,T_LG_L]$ is assembled from the inside out:
+\begin{enumerate}
+\item 1D two-term factors (values and derivatives at Gauss points): LCUs of
+  shifts with diagonal weights, $\alpha$ of the order of their norm.
+\item $d$-dimensional factors: Kronecker products of 1D factors, so the
+  $\alpha$'s multiply. They match the norms because the norms of Kronecker
+  products also multiply.
+\item $G_\ell$: a stack of the value factor and the $d$ gradient factors, weighted
+  by $\omega_\ell$ and $\beta^{1/4}$, with $\alpha(G_\ell)=(\sum_c\alpha_c^2)^{1/2}$.
+\item $T_\ell G_\ell$: a product with an isometry, which costs nothing in $\alpha$.
+\item $G$: a concatenation over the levels, which costs $\sqrt L$.
+\end{enumerate}
+The only places where $\alpha$ can exceed the norm are step~1 (if the LCU is
+not tight), step~3 (stacking is tight only if all components are equally
+saturated) and step~5 (the $\sqrt L$). Measuring $\alpha_G$ for the explicit
+construction (to-do item 1.1) quantifies exactly these three losses.
+
+\section{Numerical verification}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lcc}
+\toprule
+construction & $\|W^*W-I\|_{\max}$ & error of the selected block\\
+\midrule
+single matrix (Halmos) & $1.2\cdot10^{-15}$ & $0$\\
+product, fresh ancillas & $1.9\cdot10^{-15}$ & $8.4\cdot10^{-17}$\\
+product, \emph{same} ancilla & -- & $7.9\cdot10^{-1}$ (fails, as predicted)\\
+Kronecker product & $1.3\cdot10^{-15}$ & $5.6\cdot10^{-17}$\\
+LCU, $k=4$ complex coefficients & $3.3\cdot10^{-15}$ & $3.9\cdot10^{-16}$\\
+stacking, $k=4$ & $1.3\cdot10^{-15}$ & $3.9\cdot10^{-17}$\\
+concatenation, $k=4$ & $1.6\cdot10^{-15}$ & $3.9\cdot10^{-17}$\\
+sparse, $n=8$, $s_r=s_c=4$ & $1.7\cdot10^{-15}$ & $0$\\
+\bottomrule
+\end{tabular}
+\caption{Dense checks of all constructions
+(\texttt{qp\_block\_encoding\_rules.py}, random complex matrices, $n=4$ unless
+stated).}
+\label{tab:check}
+\end{table}
+
+\end{document}

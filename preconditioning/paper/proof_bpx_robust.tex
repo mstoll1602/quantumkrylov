@@ -1,0 +1,307 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+
+\title{Robustness of the weighted BPX factor for $M+\sqrt\beta K$\\[2pt]
+\large Proof of Assumption~3.4 of the preconditioning paper (draft for checking)}
+\author{Martin Stoll \and John W. Pearson}
+\date{Working draft, November 2026}
+
+\begin{document}
+\maketitle
+
+\noindent\emph{Status.} Steps marked \textbf{[proved]} are proved here
+completely. Steps marked \textbf{[cited]} use classical multilevel results,
+stated precisely as Lemmas~\ref{lem:jackson} and~\ref{lem:scs}; their exact
+sources and constants still have to be checked. Notation: $\nu:=\sqrt\beta>0$
+(the paper uses $\varepsilon$ for the solver accuracy).
+
+\section{Setting}
+
+Let $\Omega=(0,1)^d$, $h_\ell=2^{-\ell}$, and let $V_\ell\subset H^1_0(\Omega)$ be the $Q_1$
+finite element space on the uniform grid of mesh size $h_\ell$, $\ell=1,\dots,L$. The
+spaces are nested, $V_1\subset\dots\subset V_L=:V$. For $u\in V_\ell$ let $y\in\R^{n_\ell}$ be its
+vector of nodal values. Define
+\[
+a(u,v)=(u,v)+\nu(\nabla u,\nabla v),\qquad t_\ell:=\nu h_\ell^{-2}=\nu4^\ell,\qquad \mu_\ell:=1+t_\ell .
+\]
+The matrix of $a$ in the nodal basis of $V_\ell$ is $A_\ell=M_\ell+\nu K_\ell$; on the finest
+level $A_L=A_\beta$ of the paper.
+
+\paragraph{BPX factor.} $P_\ell$ maps nodal values on level $\ell$ to nodal values on
+level $L$ of the same function (the natural embedding $V_\ell\subset V_L$; $P_L=I$).
+$\operatorname{diag}(A_\ell)=\delta_\ell I$ is constant on the uniform grid. With weights $\omega_\ell>0$,
+\[
+C=\sum_{\ell=1}^L\omega_\ell^2P_\ell P_\ell^T,\qquad \omega_\ell^2=\frac{\tilde\theta_\ell}{\delta_\ell}.
+\]
+The paper uses $\theta_\ell=\min(1,t_\ell)^s$ with $s\in[0,1]$. Here we use the
+\emph{normalized} weights
+\[
+\tilde\theta_\ell=\frac{\theta_\ell}{\theta_L}=\Big(\frac{\min(1,t_\ell)}{\min(1,t_L)}\Big)^s .
+\]
+Since $\tilde\theta_\ell$ differs from $\theta_\ell$ by the factor $\theta_L^{-1}$, which does not depend on
+$\ell$, $C$ only changes by a positive scalar. So $\kappa(CA_\beta)$ is the same for
+both choices. The \emph{interval} $[c_0,c_1]$ below, however, is independent of
+$\beta$ only for the normalized weights (relevant for the heat problem,
+Corollary~\ref{cor:heat}).
+
+\paragraph{Claim (Assumption 3.4).} For $s\in(0,1]$ there are $0<c_0\le c_1$,
+depending only on $d$ and $s$, with $\operatorname{spec}(CA_\beta)\subset[c_0,c_1]$ for all $L\ge1$ and
+$\nu>0$.
+
+\section{Reduction to a decomposition problem}
+
+\begin{lemma}[Lions; Xu--Zikatanov]\label{lem:lions}\textbf{[proved]}
+Let $C=\sum_kR_kD_k^{-1}R_k^T$ with $D_k$ symmetric positive definite and
+$\sum_k\operatorname{range}(R_k)=\R^n$. Then $C$ is SPD and, for every $x\in\R^n$,
+\[
+x^TC^{-1}x=\min\Big\{\sum_ky_k^TD_ky_k\ :\ \sum_kR_ky_k=x\Big\}.
+\]
+\end{lemma}
+\begin{proof}
+$C$ is SPD because $x^TCx=\sum_k|D_k^{-1/2}R_k^Tx|^2=0$ forces $R_k^Tx=0$ for all $k$,
+hence $x\perp\sum_k\operatorname{range}R_k=\R^n$. For any decomposition $x=\sum_kR_ky_k$, by
+Cauchy--Schwarz,
+\[
+x^TC^{-1}x=\sum_ky_k^TR_k^TC^{-1}x
+\le\Big(\sum_ky_k^TD_ky_k\Big)^{1/2}\Big(\sum_kx^TC^{-1}R_kD_k^{-1}R_k^TC^{-1}x\Big)^{1/2},
+\]
+and the last sum equals $x^TC^{-1}CC^{-1}x=x^TC^{-1}x$. Hence $x^TC^{-1}x\le\sum_ky_k^TD_ky_k$.
+Equality holds for $y_k=D_k^{-1}R_k^TC^{-1}x$, which is a decomposition of $x$.
+\end{proof}
+
+Apply this with $R_\ell=P_\ell$ and $D_\ell=\omega_\ell^{-2}I=(\delta_\ell/\tilde\theta_\ell)I$; $P_L=I$ makes
+the ranges span. Let $x$ be the nodal vector of $u\in V$ and $y_\ell$ that of
+$u_\ell\in V_\ell$; then $\sum_\ell P_\ell y_\ell=x$ means $\sum_\ell u_\ell=u$, and $x^TA_\beta x=a(u,u)$. So
+\begin{equation}\label{eq:lions}
+x^TC^{-1}x=\min_{u=\sum_\ell u_\ell,\ u_\ell\in V_\ell}\ \sum_\ell\frac{\delta_\ell}{\tilde\theta_\ell}|y_\ell|^2 .
+\end{equation}
+Since $\operatorname{spec}(CA_\beta)\subset[c_0,c_1]\iff c_1^{-1}A_\beta\preceq C^{-1}\preceq c_0^{-1}A_\beta$, the claim is
+equivalent to
+\begin{equation}\label{eq:twosided}
+c_1^{-1}\,a(u,u)\ \le\ x^TC^{-1}x\ \le\ c_0^{-1}\,a(u,u)\qquad\text{for all }u\in V.
+\end{equation}
+
+\section{From nodal coefficients to $L^2$ norms}
+
+\begin{lemma}\label{lem:nodal}\textbf{[proved]} For $v\in V_\ell$ with nodal vector $y$,
+\[
+\Big(\frac{h_\ell}3\Big)^d|y|^2<\|v\|^2<h_\ell^d|y|^2,\qquad
+\delta_\ell=\Big(\frac{2h_\ell}3\Big)^d\big(1+3d\,t_\ell\big)\in\Big[\Big(\frac{2h_\ell}{3}\Big)^d\mu_\ell,\ 3d\Big(\frac{2h_\ell}{3}\Big)^d\mu_\ell\Big].
+\]
+\end{lemma}
+\begin{proof}
+$\|v\|^2=y^TM_\ell y$ with $M_\ell=M_1^{\otimes d}$, and the 1D mass matrix
+$\frac{h}6\operatorname{tridiag}(1,4,1)$ has eigenvalues $\frac h6(4+2\cos\phi_j)\in(\frac h3,h)$. The
+diagonal entries are $(M_\ell)_{ii}=(2h/3)^d$ and
+$(K_\ell)_{ii}=d\cdot\frac2h(\frac{2h}3)^{d-1}$, so
+$\delta_\ell=(\frac{2h}3)^d+\nu\frac{2d}h(\frac{2h}3)^{d-1}=(\frac{2h}3)^d(1+3d\nu h^{-2})$. Finally
+$\mu\le1+3dt\le3d\mu$ for $t\ge0$ and $d\ge1$.
+\end{proof}
+
+Write $\lambda_\ell:=\mu_\ell/\tilde\theta_\ell$ and
+\[
+N(u):=\inf_{u=\sum_\ell u_\ell,\ u_\ell\in V_\ell}\ \sum_\ell\lambda_\ell\|u_\ell\|^2 .
+\]
+By Lemma~\ref{lem:nodal}, for each term
+$(\frac23)^d\lambda_\ell\|u_\ell\|^2\le\frac{\delta_\ell}{\tilde\theta_\ell}|y_\ell|^2\le3d\,2^d\lambda_\ell\|u_\ell\|^2$
+(the upper bound uses $h_\ell^d|y_\ell|^2<3^d\|u_\ell\|^2$, the lower bound $\|u_\ell\|^2<h_\ell^d|y_\ell|^2$).
+Taking the infimum in~\eqref{eq:lions},
+\begin{equation}\label{eq:NC}
+\big(\tfrac23\big)^dN(u)\ \le\ x^TC^{-1}x\ \le\ 3d\,2^d\,N(u).
+\end{equation}
+It remains to show $K_1^{-1}a(u,u)\le N(u)\le K_0\,a(u,u)$ with $K_0,K_1$ independent of
+$L$ and $\nu$. Then~\eqref{eq:twosided} holds with
+\[
+c_0=\frac1{3d\,2^dK_0},\qquad c_1=\big(\tfrac32\big)^dK_1,\qquad
+\frac{c_1}{c_0}\le3d\cdot3^d\cdot K_0K_1 .
+\]
+The factor $3d\cdot3^d$ comes only from Lemma~\ref{lem:nodal}, i.e. from Jacobi
+scaling and the nodal basis. It is the ``mass-matrix floor'' seen in the
+numerics.
+
+\section{Two regimes and the weights}
+
+Since $t_\ell=\nu4^\ell$ increases by the factor 4 per level, there are two
+regimes.
+\begin{itemize}
+\item \emph{Unresolved} ($t_L<1$): all levels are mass dominated. Then
+  $\tilde\theta_\ell=(t_\ell/t_L)^s=4^{-s(L-\ell)}$ and $\lambda_\ell=(1+t_\ell)\,4^{s(L-\ell)}$.
+\item \emph{Resolved} ($t_L\ge1$): let $\ell^*=\min\{\ell:t_\ell\ge1\}$. Then $\tilde\theta_\ell=\theta_\ell$, and
+  $\lambda_\ell=1+t_\ell\in[t_\ell,2t_\ell]$ for $\ell\ge\ell^*$, while
+  $\lambda_\ell=(1+t_\ell)t_\ell^{-s}\in[t_\ell^{-s},2t_\ell^{-s}]$ for $\ell<\ell^*$. Moreover $t_{\ell^*}<4$ if
+  $\ell^*>1$.
+\end{itemize}
+
+\begin{lemma}\label{lem:lambda}\textbf{[proved]} For $s\in(0,1]$, in both regimes,
+\[
+\text{(a)}\quad t_\ell\le\lambda_\ell\ \text{ for all }\ell,\qquad
+\text{(b)}\quad S:=\sum_{\ell=1}^L\lambda_\ell^{-1}\le\frac43+\frac1{1-4^{-s}} .
+\]
+For $s=0$, (a) still holds, but $S$ is of the order of the number of
+mass-dominated levels: $S\approx L$ in the unresolved regime and $S\approx\ell^*\approx\log_4(1/\nu)$
+in the resolved one.
+\end{lemma}
+\begin{proof}
+(a) If $t_\ell\ge1$ then $\lambda_\ell=1+t_\ell>t_\ell$. If $t_\ell<1$ then $\lambda_\ell\ge1>t_\ell$, since
+$\tilde\theta_\ell\le1$ in both regimes.
+(b) Unresolved: $\lambda_\ell^{-1}\le4^{-s(L-\ell)}$, so $S\le\sum_{j\ge0}4^{-sj}=1/(1-4^{-s})$.
+Resolved: for $\ell\ge\ell^*$, $\lambda_\ell^{-1}\le t_\ell^{-1}=t_{\ell^*}^{-1}4^{-(\ell-\ell^*)}\le4^{-(\ell-\ell^*)}$, which sums to
+at most $4/3$. For $\ell<\ell^*$, $\lambda_\ell^{-1}\le t_\ell^s=t_{\ell^*-1}^s4^{-s(\ell^*-1-\ell)}<4^{-s(\ell^*-1-\ell)}$, which
+sums to at most $1/(1-4^{-s})$. For $s=0$ the bounds $\lambda_\ell^{-1}\le1$ on the mass-dominated
+levels are attained up to the factor $1+t_\ell<2$.
+\end{proof}
+
+\section{Two classical ingredients}
+
+Let $Q_\ell:L^2(\Omega)\to V_\ell$ be the $L^2$-orthogonal projection, $Q_0:=0$.
+
+\begin{lemma}[multilevel norm equivalence, Jackson direction]\label{lem:jackson}
+\textbf{[cited]} There is $C_Q$, depending only on $d$, such that for all
+$L$ and all $u\in V_L$
+\[
+\sum_{\ell=1}^Lh_\ell^{-2}\|(Q_\ell-Q_{\ell-1})u\|^2\le C_Q\,|u|_{H^1}^2 .
+\]
+\end{lemma}
+\noindent Sources to check:
+\begin{itemize}
+\item Oswald, \emph{Multilevel Finite Element Approximation}, 1994;
+\item Bornemann--Yserentant, Numer.\ Math.\ 64, 1993;
+\item Dahmen--Kunoth, Numer.\ Math.\ 63, 1992;
+\item Xu, SIAM Rev.\ 34, 1992.
+\end{itemize}
+Note that
+the easy argument via $\|(I-Q_\ell)u\|\lesssim h_\ell|u|_1$ only gives $C_Q=O(L)$; the
+$L$-independent bound is the deep part of BPX theory.
+
+\begin{lemma}[strengthened Cauchy--Schwarz and inverse inequality]\label{lem:scs}
+\textbf{[cited]} There are $C_S$ and $C_I$, depending only on $d$, such that
+for $k\le\ell$, $u\in V_k$, $v\in V_\ell$,
+\[
+|(\nabla u,\nabla v)|\le C_S\,2^{-(\ell-k)/2}\,|u|_{H^1}\,h_\ell^{-1}\|v\|,\qquad
+|v|_{H^1}^2\le C_Ih_\ell^{-2}\|v\|^2 .
+\]
+\end{lemma}
+\noindent Sources to check: Yserentant (Numer.\ Math.\ 49, 1986), Xu (SIAM
+Rev.\ 1992), Bramble--Pasciak--Xu (Math.\ Comp.\ 1990). For $Q_1$ on a uniform
+grid the inverse inequality holds with $C_I=4d\cdot3^d$, by the eigenvalue bounds
+$y^TK_\ell y\le4d\,h_\ell^{d-2}|y|^2$ and Lemma~\ref{lem:nodal}; an elementwise argument
+gives a smaller constant. The strengthened Cauchy--Schwarz inequality uses
+that $Q_1$ functions are harmonic on each coarse element (every $d$-linear
+monomial is harmonic), integration by parts on coarse elements, and a
+boundary-strip estimate for $v$.
+
+\begin{lemma}[H$^1$ part of the upper bound]\label{lem:H1}\textbf{[proved from Lemma~\ref{lem:scs}]}
+For every decomposition $u=\sum_\ell u_\ell$, $u_\ell\in V_\ell$,
+\[
+\nu|u|_{H^1}^2\le C_H\sum_\ell t_\ell\|u_\ell\|^2,\qquad C_H:=C_I+\frac{2C_SC_I^{1/2}}{\sqrt2-1}.
+\]
+\end{lemma}
+\begin{proof}
+Let $a_\ell:=t_\ell^{1/2}\|u_\ell\|=\nu^{1/2}h_\ell^{-1}\|u_\ell\|$. Expanding,
+$\nu|u|_1^2=\nu\sum_\ell|u_\ell|_1^2+2\nu\sum_{k<\ell}(\nabla u_k,\nabla u_\ell)$. The diagonal is at most
+$C_I\sum_\ell a_\ell^2$ by the inverse inequality. For $k<\ell$, Lemma~\ref{lem:scs} and the
+inverse inequality for $u_k$ give
+$\nu|(\nabla u_k,\nabla u_\ell)|\le C_SC_I^{1/2}2^{-(\ell-k)/2}a_ka_\ell$. With $q=2^{-1/2}$,
+$\sum_{k<\ell}q^{\ell-k}a_ka_\ell\le\big(\sum_{j\ge1}q^j\big)\sum_\ell a_\ell^2=\frac1{\sqrt2-1}\sum_\ell a_\ell^2$ by the
+Schur test ($2a_ka_\ell\le a_k^2+a_\ell^2$).
+\end{proof}
+
+\section{The two bounds}
+
+\begin{lemma}[upper bound for $a$]\label{lem:upper}\textbf{[proved, given Lemma~\ref{lem:scs}]}
+For $s\in(0,1]$ and every decomposition $u=\sum_\ell u_\ell$,
+\[
+a(u,u)\le K_1\sum_\ell\lambda_\ell\|u_\ell\|^2,\qquad K_1:=\frac43+\frac1{1-4^{-s}}+C_H .
+\]
+Consequently $a(u,u)\le K_1N(u)$.
+\end{lemma}
+\begin{proof}
+Mass part: by Cauchy--Schwarz,
+$\|\sum_\ell u_\ell\|\le\sum_\ell\lambda_\ell^{-1/2}\cdot\lambda_\ell^{1/2}\|u_\ell\|\le S^{1/2}(\sum_\ell\lambda_\ell\|u_\ell\|^2)^{1/2}$, and $S$ is
+bounded by Lemma~\ref{lem:lambda}(b). Stiffness part: Lemma~\ref{lem:H1} and
+$t_\ell\le\lambda_\ell$ (Lemma~\ref{lem:lambda}(a)).
+\end{proof}
+
+\begin{lemma}[stable decomposition]\label{lem:lower}\textbf{[proved, given Lemma~\ref{lem:jackson}]}
+For every $u\in V$, $N(u)\le K_0\,a(u,u)$ with $K_0:=\max(5,2C_Q)$, for every
+$s\in[0,1]$.
+\end{lemma}
+\begin{proof}
+\emph{Unresolved regime.} Take $u_L=u$ and $u_\ell=0$ otherwise. Then $\lambda_L=1+t_L<2$
+and $N(u)\le2\|u\|^2\le2a(u,u)$.
+
+\emph{Resolved regime.} Take $u_\ell=0$ for $\ell<\ell^*$, $u_{\ell^*}=Q_{\ell^*}u$, and
+$u_\ell=(Q_\ell-Q_{\ell-1})u$ for $\ell>\ell^*$. These sum to $u$, since $Q_L u=u$. For $\ell>\ell^*$,
+$\lambda_\ell\le2t_\ell$. For $\ell^*$:
+\begin{itemize}
+\item if $\ell^*>1$: $\lambda_{\ell^*}=1+t_{\ell^*}<5$ and $\|Q_{\ell^*}u\|\le\|u\|$, so this term is at most
+  $5\|u\|^2$;
+\item if $\ell^*=1$: $\lambda_1\|Q_1u\|^2\le\|u\|^2+t_1\|(Q_1-Q_0)u\|^2$.
+\end{itemize}
+In both cases
+\[
+N(u)\le5\|u\|^2+2\nu\sum_{\ell\ge1}h_\ell^{-2}\|(Q_\ell-Q_{\ell-1})u\|^2\le5\|u\|^2+2C_Q\,\nu|u|_1^2\le K_0\,a(u,u)
+\]
+by Lemma~\ref{lem:jackson}.
+\end{proof}
+
+\section{Result}
+
+\begin{theorem}\label{thm:robust}
+Let $s\in(0,1]$ and use the normalized weights $\tilde\theta_\ell$. For all $L\ge1$ and
+$\beta>0$,
+\[
+\operatorname{spec}(CA_\beta)\subset[c_0,c_1],\qquad c_0=\frac1{3d\,2^d\max(5,2C_Q)},\qquad
+c_1=\big(\tfrac32\big)^d\Big(\frac43+\frac1{1-4^{-s}}+C_H\Big).
+\]
+In particular $\kappa(CA_\beta)\le3d\cdot3^d\max(5,2C_Q)\big(\frac43+\frac1{1-4^{-s}}+C_H\big)$,
+independently of $h$ and $\beta$. The same condition number bound holds
+for the unnormalized weights $\theta_\ell$ of the paper.
+\end{theorem}
+\begin{proof}
+Combine~\eqref{eq:NC} with Lemmas~\ref{lem:upper} and~\ref{lem:lower}. The
+last sentence follows from the scale invariance of $\kappa$.
+\end{proof}
+
+\begin{remark}[$s=0$, plain BPX]
+Lemma~\ref{lem:lower} still holds, but in Lemma~\ref{lem:upper} the mass
+part contributes $S$, which is of the order of the number of mass-dominated
+levels. The resulting bound grows like $\log(1/\beta)$ in the resolved regime
+and like $L$ in the unresolved regime. This matches the observed
+degradation of plain BPX. It is also consistent with the $L$-dependence in
+Yang--Yu--Zhang (arXiv:2610.06987), whose weights do not damp mass-dominated
+levels (to be checked against their proof).
+\end{remark}
+
+\begin{remark}[sharpness]
+The constants are far from sharp: for $d=3$ the factor $3d\cdot3^d=243$ alone
+exceeds the observed $\kappa(CA_\beta)\le20.5$. The proof explains the structure
+(geometric damping makes the mass part summable; the floor comes from
+Jacobi scaling), not the size of the constants.
+\end{remark}
+
+\begin{corollary}[time-periodic heat problem]\label{cor:heat}
+For frequency $k$ the paper's operator is $A_k=r_kM+\nu K=r_k(M+\nu_kK)$ with
+$\nu_k=\nu/r_k$. Using in $R_k$ the diagonal of $A_k$ and the normalized weights
+for $\nu_k$, we get $C_kA_k=C(\nu_k)A_{\nu_k}$ with $C(\nu_k)$ the factor of
+Theorem~\ref{thm:robust} for parameter $\nu_k$. Hence
+$\operatorname{spec}(C_kA_k)\subset[c_0,c_1]$ with the \emph{same} $c_0,c_1$ for all $k$. This is the
+hypothesis of the paper's heat theorem.
+\end{corollary}
+\begin{proof}
+$\operatorname{diag}(A_{k,\ell})=r_k\operatorname{diag}(M_\ell+\nu_kK_\ell)$, so $\omega_{\ell,k}^2=r_k^{-1}\omega_\ell(\nu_k)^2$ and
+$C_k=r_k^{-1}C(\nu_k)$. Then $C_kA_k=C(\nu_k)(M+\nu_kK)$, and Theorem~\ref{thm:robust}
+applies with $\nu_k$; its interval does not depend on $\nu$.
+\end{proof}
+
+\end{document}

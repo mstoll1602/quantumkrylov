@@ -46,10 +46,10 @@ of PDE-constrained optimization. For distributed control of the Poisson
 equation, we combine a Sch\"oberl--Zulehner block preconditioner with an
 additive multilevel (BPX) factor. We apply it on both sides of the KKT
 matrix and factor the result as $\G^*\J\G$, where $\J$ is a single
-two-qubit reflection and $\G$ is well scaled. A commuting property of
-quadrature factors and prolongations, with an element-local isometry,
-gives a block encoding of $\G$ whose normalization grows only like
-$\sqrt{\log h^{-1}}$. The effective condition number is then bounded
+two-qubit reflection and $\G$ is well scaled. Building on the factorized
+multilevel block encodings of Deiml and Peterseim, which we formulate
+through quadrature points so that they cover $Q_k$ and $P_k$ elements, $\G$
+has a block encoding whose normalization grows only like $\sqrt{\log h^{-1}}$. The effective condition number is then bounded
 independently of the mesh size. With level weights that we introduce, it
 is also bounded in the regularization parameter, up to a constant fixed by
 the mass matrix. For the time-periodic heat equation, a quantum Fourier
@@ -65,7 +65,8 @@ cannot be expected.
 
 Quantum linear system algorithms (QLSAs) prepare a quantum state proportional
 to the solution $x$ of $Ax=b$. They use a number of calls to a circuit
-encoding $A$ that scales like $\kappa\log(1/\varepsilon)$ \cite{CKS17,GSLW19,Costa22}. The
+encoding $A$ that scales like $\kappa\log(1/\varepsilon)$, where $\varepsilon$ is the accuracy of
+the prepared solution state \cite{CKS17,GSLW19,Costa22}. The
 size $n$ of the system enters only through the circuit cost, which is
 typically polylogarithmic in $n$ for structured problems. Discretized PDEs are
 the obvious application, but the condition number of a discretized
@@ -78,8 +79,26 @@ Preconditioning for QLSAs has been studied:
 \item by sparse approximate inverses \cite{CJS13};
 \item by ``fast inversion'' of a dominant part of the matrix \cite{TAWL21};
 \item by wavelet bases \cite{BNWA23};
-\item for elliptic finite element discretizations, by the BPX multilevel
-  preconditioner \cite{DP24};
+\item for elliptic finite element discretizations, by Deiml and Peterseim
+  \cite{DP26}. Their work is the basis of our Section~\ref{sec:poisson}.
+  \begin{itemize}
+  \item They write the stiffness matrix as $C_L^T(D_A\otimes I)C_L$, where $C_L$ maps
+    nodal values to gradients in an $L^2$-orthonormal basis of discontinuous
+    $Q_1$ functions, and $D_A$ holds the (possibly variable) diffusion
+    coefficient.
+  \item They apply the BPX preconditioner as a generating system $F$, with
+    $FF^T$ the preconditioner, to this factor.
+  \item A commutative diagram (gradient on the coarse level, followed by an
+    inclusion with orthonormal columns) gives a block encoding of the
+    preconditioned factor whose normalization grows only linearly in the
+    number of levels.
+  \item They introduce the effective condition number (subnormalization
+    times condition number), and they ran small instances on quantum
+    hardware.
+  \end{itemize}
+  Related constructions are the finite-difference analogue \cite{JLMY25} and
+  the extension to reaction--diffusion problems $-\Delta u+cu$ with a bound
+  uniform in $c$ \cite{YYZ26};
 \item empirically, for CFD matrices, comparing several preconditioners and
   ways of encoding them \cite{LS25};
 \item for the Newton systems of quantum interior point methods
@@ -113,9 +132,11 @@ optimization have so far been variational heuristics.
   \item The resulting matrix factors as $\G^*\J\G$. Here $\J$ is a single
     two-qubit reflection, and $\G$ maps multilevel coefficients to values
     and gradients at quadrature points.
-  \item A commuting lemma for quadrature factors and prolongations with an
-    \emph{element-local isometry} yields a block encoding of $\G$ with
-    normalization $O(\sqrt{\log h^{-1}})$.
+  \item The block encoding of $\G$, with normalization $O(\sqrt{\log h^{-1}})$, builds
+    on the commuting diagram of Deiml and Peterseim \cite{DP26}, extended to
+    the mass term in \cite{YYZ26}. We formulate it through quadrature
+    points, with an \emph{element-local isometry} (Lemma~\ref{lem:commute}),
+    so that it covers $Q_k$ and $P_k$ elements.
   \item The effective condition number is bounded independently of $h$
     (Theorem~\ref{thm:main}). It holds for $Q_k$ and $P_k$ elements on
     nested meshes.
@@ -149,7 +170,7 @@ algebra (see \cite{GSLW19,Lin22} for details).
 \paragraph{States and outputs.} A unit vector $v\in\C^{2^k}$ is stored in $k$
 qubits. Its entries cannot be read out. Repeated measurement gives
 estimates of quantities $v^*Ov$ for suitable Hermitian $O$, with additive error
-$\varepsilon$. This costs $O(\varepsilon^{-2})$ repetitions, or $O(\varepsilon^{-1})$ with amplitude
+$\eta$. This costs $O(\eta^{-2})$ repetitions, or $O(\eta^{-1})$ with amplitude
 estimation \cite{BHMT02}. The output of a quantum solver is therefore a
 small number of scalar \emph{quantities of interest} (QoIs), such as
 $\langle w,y\rangle_M$ or the value of the objective, never the vector $x$.
@@ -160,8 +181,12 @@ with \emph{subnormalization} $\alpha$ if a unitary circuit $U$ satisfies
 U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
 \]
 Every block of a unitary matrix has norm at most one, so $\alpha\ge\|A\|$ for
-\emph{every} block encoding. How close $\alpha$ comes to $\|A\|$ depends on the
-construction. Applying $U$ to $[v;0]$ and keeping the first block
+\emph{every} block encoding. We call $\alpha=\|A\|$ the \emph{ideal
+subnormalization}. It is always attainable in principle, by a unitary
+dilation, but that dilation is a dense matrix without an efficient
+circuit. Efficient circuits are built from structure, and they usually pay
+more than $\|A\|$. How much more depends on the construction; examples are in
+the supplement (\texttt{nla\_for\_quantum.tex}). Applying $U$ to $[v;0]$ and keeping the first block
 (postselection) yields $Av/\|Av\|$. This succeeds with probability
 $\|Av\|^2/(\alpha\|v\|)^2$.
 
@@ -187,41 +212,148 @@ brackets):
 \item stacking $[A_1;\dots;A_k]$ $[(\sum_j\alpha_j^2)^{1/2}]$: prepare an index
   register with amplitudes $\propto\alpha_j$ and apply $A_j$ controlled on
   index $j$;
-\item concatenation $[A_1,\dots,A_k]$ $[\sqrt k\max_j\alpha_j]$;
+\item concatenation $[A_1,\dots,A_k]$ $[(\sum_j\alpha_j^2)^{1/2}\le\sqrt k\max_j\alpha_j]$;
 \item sparse matrices with $s_r$ nonzeros per row and $s_c$ per column,
   whose entries are computable by a circuit $[\sqrt{s_rs_c}\max_{ij}|a_{ij}|]$
   \cite{GSLW19}.
 \end{itemize}
+Products need a fresh ancilla per factor; reusing one ancilla brings
+discarded components back into the leading block. Explicit unitary
+realizations of all rules, with derivations of the subnormalizations and
+numerical checks, are given in the supplement \emph{Block encodings for
+numerical linear algebraists} (\texttt{nla\_for\_quantum.tex}).
 In a product, the subnormalization can be far larger than the norm:
 $\alpha_A\alpha_B\ge\|A\|\|B\|\gg\|AB\|$ is possible.
 
 \paragraph{Solving.} Let $\B$ be Hermitian and block encoded with subnormalization
-$\alpha$, and let its nonzero eigenvalues satisfy $|\lambda|\ge\sigma_{\min}$. Quantum
+$\alpha$, and let its nonzero eigenvalues satisfy $|\lambda|\ge\sigma_{\min}$. A quantum solver
+for $\B z=b$ outputs a unit vector $\tilde z$ (a quantum state). Its
+\emph{accuracy} $\varepsilon$ is measured in the Euclidean norm against the normalized
+minimum-norm solution:
+\begin{equation}\label{eq:eps}
+\Big\|\tilde z-\frac{\B^+b}{\|\B^+b\|}\Big\|\le\varepsilon .
+\end{equation}
+Throughout, $\varepsilon$ denotes this solver accuracy. The additive error of a
+measured scalar is $\eta$ (above). The target accuracy of a quantity of
+interest is $\mathrm{tol}$ (Section~\ref{sec:discussion}). Quantum
 singular value transformation (QSVT) \cite{GSLW19} applies an odd polynomial
 $p(\B/\alpha)$ of degree $D$ using $D$ calls to the block encoding.
 
-\emph{Why odd.} QSVT alternates the encoding circuit $U$ and its inverse $U^*$
-with single-qubit rotations. For $A=W\Sigma V^*$:
-\begin{itemize}
-\item an odd number of calls gives $Wp(\Sigma)V^*$ with $p$ odd;
-\item an even number gives $Vp(\Sigma)V^*$ with $p$ even.
-\end{itemize}
-This is the pattern of $A(A^*A)^k=W\Sigma^{2k+1}V^*$ versus $(A^*A)^k=V\Sigma^{2k}V^*$,
-as in Golub--Kahan bidiagonalization. $U$ maps the right singular vectors
-into the block of the left ones, $U^*$ maps them back, and the rotations
-in between only change the polynomial. Polynomials of mixed parity need a
-linear combination of both, which doubles $\alpha$. For Hermitian $\B=Q\Lambda Q^*$ we have $W=Q\operatorname{sign}(\Lambda)$,
-$\Sigma=|\Lambda|$ and $V=Q$. An odd $p$ therefore gives
-$Q\operatorname{sign}(\Lambda)p(|\Lambda|)Q^*=Qp(\Lambda)Q^*$, the usual matrix function with the
-signs of the eigenvalues kept. This is what an indefinite $\B$ requires.
+\emph{Why odd.} QSVT alternates calls to $U$ and $U^*$. It acts on the
+singular values $|\lambda_i|$ of $\B=Q\Lambda Q^*$, and $D$ calls give a polynomial
+$p$ of degree $D$ and parity $D$ (as in $(\B^*\B)^k$ versus $\B(\B^*\B)^k$). The signs
+of the eigenvalues enter only through their $D$-th power:
+\[
+Q\operatorname{diag}\big(\operatorname{sign}(\lambda_i)^D\big)\,p(|\Lambda|)\,Q^* .
+\]
+For odd $D$ this is $Qp(\Lambda)Q^*=p(\B)$. For even $D$ the signs are lost, so an
+even $p$ cannot approximate $1/\lambda$ on an indefinite spectrum.
 
-With $p(t)\approx1/t$ on $[\sigma_{\min}/\alpha,1]$, with $p$ bounded on $[-1,1]$, we
-obtain the pseudoinverse $\B^+$, because $p(0)=0$ for odd $p$. The cost is
+\emph{Solving means evaluating a polynomial.} A QSVT solver does not iterate.
+It evaluates the matrix function $p(\B/\alpha)$ for a fixed odd polynomial with
+\[
+p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p|\le1\ \text{ on }[-1,1],\qquad
+\delta=\frac{\sigma_{\min}}{\alpha}.
+\]
+The bound $|p|\le1$ is needed because $p(\B/\alpha)$ must again be a block of a
+unitary. Since $p(0)=0$, the result is the scaled pseudoinverse $\delta\,\B^+$.
+\begin{itemize}
+\item In classical terms this is Chebyshev semi-iteration whose degree is
+  fixed in advance, namely $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$. The $\log(\kappa_\alpha/\varepsilon)$
+  arises because $p$ must approximate $\delta/t$ to about $\varepsilon/\kappa_\alpha$ for the
+  normalized output to satisfy~\eqref{eq:eps}. The polynomial
+  depends only on the interval, not on $b$ or the actual spectrum. Unlike CG
+  or MINRES, it cannot adapt.
+\item Postselecting $\delta\B^+b$ succeeds with probability
+  \[
+  \frac{\|\delta\B^+b\|^2}{\|b\|^2}\ \ge\ \frac1{\kappa_\alpha^2}.
+  \]
+  Amplitude amplification then needs at most $\kappa_\alpha$ rounds.
+\end{itemize}
+Plain QSVT inversion therefore costs $O(\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon))$ calls.
+Variable-time amplitude amplification \cite{CKS17} or the discrete adiabatic
+method \cite{Costa22} achieve the optimal
 \begin{equation}\label{eq:cost}
-O\big(\kappa_\alpha\log(1/\varepsilon)\big),\qquad \kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \kappa(\B),
+O\big(\kappa_\alpha\log(1/\varepsilon)\big),\qquad \kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \kappa(\B).
 \end{equation}
-which is optimal in $\kappa_\alpha$ \cite{CKS17,Costa22}. We call $\kappa_\alpha$ the
-\emph{effective condition number}.
+In both cases the cost is governed by $\kappa_\alpha$, the \emph{effective condition
+number} in the terminology of Deiml and Peterseim \cite[Def.~4.1]{DP26}.
+
+\paragraph{What preconditioning means.} If solving means evaluating a
+polynomial, then preconditioning means \emph{choosing the matrix in which the
+polynomial is evaluated}, so that a polynomial of low degree suffices.
+
+\emph{Why this is the only lever.} The polynomial has to approximate $\delta/t$
+on $[\delta,1]$ while staying bounded by one on $[-1,1]$, where $\delta=\sigma_{\min}/\alpha=1/\kappa_\alpha$.
+This needs degree about $\kappa_\alpha\log(1/\varepsilon)$, and every degree is one call to
+the block encoding. Solving is cheap only if $\delta$ is not small: the
+\emph{scaled} spectrum of the encoded matrix must stay away from zero.
+
+\emph{How it is done.} Let $\A x=f$ be the system and let $\Rt$ be a factor of
+the preconditioner, $\Rt\Rt^T\approx P^{-1}$. Instead of evaluating a polynomial in
+$\A/\alpha_\A$, we evaluate one in the preconditioned matrix $\B=\Rt^T\A\Rt$ and map
+back:
+\[
+\A^{-1}=\Rt\,\B^+\Rt^T\ \approx\ \frac1{\sigma_{\min}(\B)}\,\Rt\,p\big(\B/\alpha_\B\big)\,\Rt^T,
+\]
+with $p\approx\delta/t$ as above (Theorem~\ref{thm:B} justifies the first equality).
+The degree drops from about $\kappa_\alpha(\A)\log(1/\varepsilon)$ to about $\kappa_\alpha(\B)\log(1/\varepsilon)$.
+Both are effective condition numbers, because the cost is always set by
+the encoded matrix. For $\A$ we only use $\kappa_\alpha(\A)\ge\kappa(\A)$, with equality for an
+ideal encoding; this is the best case for the unpreconditioned solver. For
+$\B$ the gap between $\kappa_\alpha(\B)$ and $\kappa(\B)$ is exactly what the encoding lever
+below controls, so $\kappa(\B)$ alone would be misleading. For
+the Poisson control problem of Section~\ref{sec:poisson} with $d=1$ and
+$h=2^{-8}$, this is $\kappa_\alpha(\A)\ge\kappa(\A)\approx2.6\cdot10^4$ against $\kappa_\alpha(\B)\approx5$--$10$. The
+latter assumes an ideal encoding of the factor $G$ of
+Section~\ref{sec:poisson}. There $\B=\G^T\J\G$ with $\G=I_2\otimes G$, and $G$ maps
+multilevel coefficients to values and gradients at quadrature points. The
+middle factor $\J$ costs nothing, so $\alpha_\B=\alpha_G^2$, which is $\|G\|^2$ in the ideal
+case. The value for the explicit construction is still to be measured
+(Section~\ref{sec:poisson}).
+
+\emph{Two levers, one classical and one quantum.} The ratio
+$\delta=\sigma_{\min}(\B)/\alpha_\B$ can be spoiled from either side.
+\begin{enumerate}
+\item \emph{Spectral (classical).} $\sigma_{\min}(\B)$ must be comparable to $\|\B\|$.
+  This is ordinary spectral equivalence of $P$ and $\A$, i.e. eigenvalue
+  inclusion intervals. In Section~\ref{sec:poisson} it is provided by the
+  Sch\"oberl--Zulehner block structure combined with BPX.
+\item \emph{Encoding (quantum).} $\alpha_\B$ must be comparable to $\|\B\|$. This
+  fails if $\B$ is encoded as the product $\Rt^T\cdot\A\cdot\Rt$: then
+  $\alpha_\B\gtrsim\|R\|^2\|\A\|$, which is of the order of $\kappa(\A)$ (Section~\ref{sec:poisson},
+  \eqref{eq:naivealpha}), and lever~1 is undone. It succeeds if $\B$ is
+  written as a product of factors that are each encoded close to their own
+  norm, and whose norms multiply to about $\|\B\|$ (no cancellation between
+  the factors). A Gram factorization $F^TF$ has the second property
+  automatically, since $\|F^TF\|=\|F\|^2$. Our $\B=\G^T\J\G$ (Section~\ref{sec:poisson}) is
+  of this type, with a reflection $\J$ in the middle to carry the
+  indefiniteness.
+\end{enumerate}
+
+\emph{Comparison with classical preconditioning.}
+\begin{itemize}
+\item \emph{Where the preconditioner sits.} Classically, $P$ is applied once per
+  iteration, usually by an inner solve such as a multigrid cycle. Here the
+  preconditioner is built into the matrix that is encoded, so every call of
+  the circuit already multiplies by the preconditioned operator. There are
+  no inner solves: $P^{-1}$ must be available as a multiplication by a factor
+  $\Rt$ (principle~(D3) below).
+\item \emph{What is optimized.} A Krylov method chooses its polynomial
+  adaptively, from the actual spectrum and the right-hand side, so
+  clustering of eigenvalues helps. Here the polynomial is fixed in advance
+  by the interval $[\delta,1]$, so only the interval counts (principle~(D1)).
+\item \emph{$\kappa$ versus $\sqrt\kappa$.} For SPD systems, Chebyshev iteration or CG
+  need about $\sqrt\kappa$ steps, because they minimize a residual polynomial
+  normalized by $p(0)=1$, a relative error measure. QSVT must approximate
+  the inverse itself uniformly on $[\delta,1]$, while staying bounded by one on
+  $[-1,1]$. This needs degree of order $\kappa_\alpha$. The quantum solver therefore
+  depends more strongly on the condition number than CG does, which makes
+  preconditioning \emph{more} important, not less.
+\item \emph{The ends of the product.} In practice $\Rt$ and $\Rt^T$ are not
+  applied separately. The right-hand side is prepared as $\Rt^Tf=\G^Tg$, and
+  outputs are read through $\G$ (principle~(D5)).
+\end{itemize}
 
 \paragraph{Design principles.} Equation~\eqref{eq:cost} changes what a good
 preconditioner is.
@@ -233,14 +365,17 @@ preconditioner is.
   \cite{SZ07,PW12}.
 \item[(D2)] \emph{Subnormalizations count.} The preconditioned matrix must be
   encoded with $\alpha$ close to its norm. Multiplying separately encoded
-  factors such as $P^{-1/2}$, $\A$ and $P^{-1/2}$ fails.
+  factors such as $P^{-1/2}$, $\A$ and $P^{-1/2}$ fails. This is why
+  \cite{DP26} precondition a \emph{factor} of the stiffness matrix rather than
+  the matrix itself; see also \cite{LS25}.
 \item[(D3)] \emph{Preconditioners multiply.} A classical inner solve
   (e.g. a multigrid cycle) has to become a circuit that multiplies by
   $P^{-1}$ or by a factor of it. Additive multilevel methods \cite{BPX90,Xu92}
   are sums of products of structured sparse matrices and fit this
   model. Multiplicative multigrid does not.
 \item[(D4)] \emph{Kernels are harmless.} QSVT inverts on the range, so
-  redundant generating systems, such as multilevel ones, are allowed.
+  redundant generating systems, such as multilevel ones, are allowed. This
+  is used in \cite{DP26} for the BPX generating system.
 \item[(D5)] \emph{Organize for QoIs.} Right-hand sides and outputs should be
   accessible without applying further badly scaled operators.
 \end{enumerate}
@@ -276,6 +411,14 @@ In $d$ dimensions let $F_{\mathrm{val}}=F_0^{\otimes d}$ and let $F_\nabla$ stac
 $F^{(i)}=F_0\otimes\cdots\otimes F_1\otimes\cdots\otimes F_0$ ($F_1$ in position $i$). Then
 $M=F_{\mathrm{val}}^TF_{\mathrm{val}}$ and $K=F_\nabla^TF_\nabla$. The factors have
 $2^{d(L+1)}$ rows, $2^d$ nonzeros per row and at most $4^d$ per column.
+
+This is the quadrature-point version of the factorization of Deiml and
+Peterseim \cite[(6.1)]{DP26}, which uses an $L^2$-orthonormal (Legendre) basis
+of discontinuous $Q_1$ functions on each element instead of weighted values
+at Gauss points. For $Q_1$ the two are related by an orthogonal $2\times2$ map per
+element and direction, so the statements are equivalent. The quadrature
+form includes the mass matrix, as in \cite{YYZ26}, and extends directly to
+$Q_k$ and $P_k$ elements (Remark~\ref{rem:elements}).
 
 \begin{remark}[Other elements]\label{rem:elements}
 The construction is not specific to $Q_1$. Consider a nested family of
@@ -359,7 +502,8 @@ $A_{\beta,\ell}$ have constant diagonal on a uniform grid:
 \operatorname{diag}(A_{\beta,\ell})=\delta_\ell I,\qquad
 \delta_\ell=\big(\tfrac{2h_\ell}{3}\big)^d+\sqrt\beta\,\tfrac{2d}{h_\ell}\big(\tfrac{2h_\ell}{3}\big)^{d-1}.
 \]
-We define the weighted, diagonally scaled BPX factor
+Following \cite[Sec.~5]{DP26}, we use BPX in factored form, as a generating
+system $R$ with $C=RR^T$. We define the weighted, diagonally scaled BPX factor
 \begin{equation}\label{eq:bpx}
 R=\big[\,\omega_1P_1,\ \dots,\ \omega_LP_L\,\big],\qquad
 C=RR^T=\sum_{\ell=1}^L\omega_\ell^2P_\ell P_\ell^T,\qquad
@@ -392,7 +536,7 @@ concerns the singularly perturbed operator $I-\sqrt\beta\Delta$.
   levels makes things worse at intermediate $\beta$.
 \end{itemize}
 \todo{Prove Assumption~\ref{ass:bpx} for $s=1$ with $\beta$-independent
-constants (robust additive multilevel methods for $I-\varepsilon^2\Delta$); a better
+constants (robust additive multilevel methods for $I-\mu^2\Delta$); a better
 mass factor than diagonal scaling would lower the $3^d$ floor.}
 
 \subsection{The two-sided system and its factorization}
@@ -449,8 +593,30 @@ invert on $[\sigma_{\min}/\alpha,1]$, with degree $\sim\alpha/\sigma_{\min}$. It
 it behaves like Chebyshev semi-iteration with the upper eigenvalue bound
 overestimated as $\alpha$ instead of $\lambda_{\max}$. So the cost would be of the
 order of $\kappa(\A)$, as without preconditioning. Krylov methods do not
-suffer from this, because they adapt to the actual spectrum. We therefore
-write $\B$ with factors that are well scaled individually.
+suffer from this, because they adapt to the actual spectrum.
+
+\emph{What a good factorization needs.} We look for a factorization
+$\B=F_1F_2\cdots F_m$ with two properties.
+\begin{enumerate}
+\item[(W1)] \emph{Tight factors:} each factor has an efficient block encoding
+  with $\alpha(F_i)\approx\|F_i\|$.
+\item[(W2)] \emph{No cancellation:} $\prod_i\|F_i\|\approx\|\B\|$. That is, the vectors on which
+  one factor is large are not damped by its neighbours.
+\end{enumerate}
+Then $\alpha_\B=\prod_i\alpha(F_i)\approx\|\B\|$. The naive product $\Rt^T\cdot\A\cdot\Rt$ satisfies (W1)
+but violates (W2): $R$ is large on smooth vectors, where $\A$ is small, and
+$\|R\|^2\|\A\|$ exceeds $\|\B\|$ by a factor of order $\kappa(A_\beta)$.
+\begin{itemize}
+\item \emph{Gram factorizations satisfy (W2) automatically,} because
+  $\|F^TF\|=\|F\|^2$ exactly. This is why we factor through
+  $G=[F_{\mathrm{val}}R;\,\beta^{1/4}F_\nabla R]$, which has $G^TG=R^TA_\beta R$.
+\item \emph{An indefinite $\B$ needs a reflection in the middle} (next
+  paragraph). (W2) then holds up to a bounded factor: $\|\G\|^2\|\J\|=\|G\|^2\le c_1$,
+  while $\|\B\|\ge c_0/\sqrt2$ by Theorem~\ref{thm:B}, so
+  $\prod_i\|F_i\|/\|\B\|\le\sqrt2\,c_1/c_0$.
+\item \emph{(W1)} is the subject of Section~\ref{sec:blockG}
+  (Lemma~\ref{lem:commute} and Proposition~\ref{prop:alphaG}).
+\end{itemize}
 
 \emph{Why a reflection in the middle.} $\B$ is indefinite, so it cannot be
 written as $G^TG$. Let
@@ -486,7 +652,7 @@ the off-diagonal $\sqrt\beta R^TKR$.
   with $\G$. So $R$ is never applied on its own (D5).
 \end{itemize}
 
-\subsection{Block encoding of the multilevel factor}
+\subsection{Block encoding of the multilevel factor}\label{sec:blockG}
 
 A product encoding of $F_\nabla P_\ell$ loses a factor $h_\ell/h$. The reason is
 that $\|F_\nabla\|$ is attained by oscillatory vectors and $\|P_\ell\|$ by smooth
@@ -494,7 +660,7 @@ ones. Numerically, the loss reaches $148$ for $L=8$ (Table~\ref{tab:loss}).
 The remedy is to differentiate on the coarse level and only then transfer
 to the fine level.
 
-\begin{lemma}[commuting with prolongation]\label{lem:commute}
+\begin{lemma}[commuting with prolongation; cf.\ {\cite[Thm.~6.2]{DP26}}]\label{lem:commute}
 For each level $\ell$ there is an isometry $T_\ell$ ($T_\ell^TT_\ell=I$) with
 \[
 F_{\mathrm{val}}P_\ell=T_\ell F_{\mathrm{val},\ell},\qquad F^{(i)}P_\ell=T_\ell F^{(i)}_\ell\quad(i=1,\dots,d).
@@ -513,6 +679,15 @@ values compute the exact $L^2$ norm of the same affine function, because
 two-point Gauss quadrature is exact for quadratics. Hence $\widehat T_k$ is an
 isometry.
 \end{proof}
+
+For $Q_1$ and the gradient part, Lemma~\ref{lem:commute} is the commutative
+diagram of Deiml and Peterseim \cite[Thm.~6.2]{DP26}: differentiate on the
+coarse level, then include the coarse discontinuous space into the fine one
+by a map with orthonormal columns. The finite-difference analogue is
+\cite[Lemma~4.3]{JLMY25}. The version with values and gradients, i.e. with
+the mass term, is \cite[Lemma~3.3]{YYZ26}. Our contribution here is the
+quadrature formulation, which covers $Q_k$ and $P_k$ elements
+(Remark~\ref{rem:elements}).
 
 Some matrix $T$ with $F P_\ell=TF_\ell$ always exists when $F_\ell$ has full column
 rank, e.g. $T=FP_\ell F_\ell^+$. The content of Lemma~\ref{lem:commute} is that
@@ -538,6 +713,9 @@ $C_d$ depends only on $d$.
 \item Concatenating the $L$ levels costs a factor $\sqrt L$.
 \end{itemize}
 \end{proof}
+Since $\B=\G^T\J\G$, the subnormalization of $\B$ is $\alpha_G^2=O(L)$. This matches
+the linear growth in $L$ that Deiml and Peterseim obtain for the
+preconditioned stiffness factor \cite[Thm.~6.3]{DP26}.
 The sparse-access constant is pessimistic ($C_3\approx45$). Encoding $G_\ell$ as
 a weighted stack of Kronecker products of 1D two-term factors should give
 constants close to $\|G_\ell\|\le\sqrt{\theta_\ell}\,3^{d/2}$.
@@ -570,7 +748,7 @@ $\kappa_\alpha=\alpha_G^2/\sigma_{\min}(\B)$, not the ideal $\|G\|^2/\sigma_{\mi
 
 \begin{theorem}\label{thm:main}
 Under Assumption~\ref{ass:bpx}, QSVT applied to $\B=\G^T\J\G$ solves
-$\B z=\G^Tg$ to accuracy $\varepsilon$ using
+$\B z=\G^Tg$ to accuracy $\varepsilon$, in the sense of~\eqref{eq:eps}, using
 \[
 O\Big(\frac{C_d^2L}{c_0}\log\frac1\varepsilon\Big)
 \]
@@ -939,25 +1117,40 @@ $1/\sqrt3\approx0.577$.}
 
 \section{Complexity and discussion}\label{sec:discussion}
 
-\paragraph{Poisson control.} Suppose the QoI is needed to accuracy $\varepsilon$
-and the discretization error is $O(h^2)$, so $h\sim\varepsilon^{1/2}$.
+\paragraph{Accuracies.} Let $\mathrm{tol}$ be the target accuracy of a QoI. It is
+split into three parts:
 \begin{itemize}
-\item Classically, the cost is $O(n)=O(\varepsilon^{-d/2})$ with optimal preconditioning.
-\item On a quantum computer, Theorem~\ref{thm:main} gives $\mathrm{polylog}(1/\varepsilon)$
-  per solve. Readout adds a factor $O(\varepsilon^{-1})$, for a total of
-  $\widetilde O(\varepsilon^{-1})$.
+\item the discretization error;
+\item the solver accuracy $\varepsilon$ of~\eqref{eq:eps};
+\item the readout error $\eta$ of Section~\ref{sec:prelim}.
 \end{itemize}
-An asymptotic advantage therefore requires $d=3$ on this count. Deiml and
-Peterseim state an advantage from $d=2$ on \cite{DP24}. \todo{reconcile
-cost models.}
+Each part is chosen of order $\mathrm{tol}$. Up to constants, the cost of a QoI to
+accuracy $\mathrm{tol}$ is therefore (calls per solve with $\varepsilon\sim\mathrm{tol}$) times
+(readout repetitions $\sim\mathrm{tol}^{-1}$).
+
+\paragraph{Poisson control.} Suppose the discretization error of the QoI is
+$O(h^2)$, so $h\sim\mathrm{tol}^{1/2}$.
+\begin{itemize}
+\item Classically, the cost is $O(n)=O(\mathrm{tol}^{-d/2})$ with optimal preconditioning.
+\item On a quantum computer, Theorem~\ref{thm:main} gives $\mathrm{polylog}(1/\mathrm{tol})$
+  calls per solve. Readout adds a factor $O(\mathrm{tol}^{-1})$, for a total of
+  $\widetilde O(\mathrm{tol}^{-1})$.
+\end{itemize}
+An asymptotic advantage therefore requires $d=3$ on this count. This is
+consistent with Deiml and Peterseim \cite[Remark~6.7]{DP26}. In their
+analysis, if the accuracy demands $h\approx\mathrm{tol}^{1/s}$, an advantage requires
+$d>s$. They measure the error in the energy norm, where $s=1$, which gives
+an advantage from $d=2$. For quantities of interest with $O(h^2)$ accuracy,
+$s=2$, so $d=3$ is needed. \todo{check the precise statement of their
+Remark~6.7.}
 
 \paragraph{Heat control.}
 \begin{itemize}
-\item With backward Euler, $N_t\sim\varepsilon^{-1}$ and the classical cost is
-  $\varepsilon^{-(d/2+1)}$. On that count, a quantum advantage would appear for
+\item With backward Euler, $N_t\sim\mathrm{tol}^{-1}$ and the classical cost is
+  $\mathrm{tol}^{-(d/2+1)}$. On that count, a quantum advantage would appear for
   every $d$.
 \item This comparison is unfair. For data that are smooth in time, a
-  multiharmonic discretization needs only $\log(1/\varepsilon)$ harmonics, and the
+  multiharmonic discretization needs only $\log(1/\mathrm{tol})$ harmonics, and the
   elliptic count returns.
 \item The time dimension favours the quantum solver only when many
   harmonics are genuinely needed, i.e. for targets or forcing that are rough
@@ -1014,12 +1207,16 @@ are robust in the discretization parameters. Open directions:
 \bibitem{DMWL21} Y.~Dong, X.~Meng, K.~B.~Whaley, L.~Lin, Efficient phase-factor
   evaluation in quantum signal processing, \emph{Phys. Rev. A} 103 (2021)
   042419.
-\bibitem{DP24} M.~Deiml, D.~Peterseim, Quantum realization of the finite element
-  method, arXiv:2403.19512 (2024).
+\bibitem{DP26} M.~Deiml, D.~Peterseim, Quantum realization of the finite element
+  method, \emph{Math. Comp.} 95 (2026), no.~362, 2637--2668,
+  doi:10.1090/mcom/4137; arXiv:2403.19512.
 \bibitem{GSLW19} A.~Gily\'en, Y.~Su, G.~H.~Low, N.~Wiebe, Quantum singular value
   transformation and beyond, \emph{Proc. STOC} (2019) 193--204.
 \bibitem{HJ13} R.~A.~Horn, C.~R.~Johnson, \emph{Matrix Analysis}, 2nd ed.,
   Cambridge University Press, 2013.
+\bibitem{JLMY25} S.~Jin, N.~Liu, C.~Ma, Y.~Yu, Quantum preconditioning method for
+  finite difference discretizations of the Poisson equation via
+  Schr\"odingerization, arXiv:2505.06866 (2025).
 \bibitem{KK12} M.~Kollmann, M.~Kolmbauer, A preconditioned MinRes solver for
   time-periodic parabolic optimal control problems, \emph{Numer. Linear
   Algebra Appl.} (2012), doi:10.1002/nla.1842.
@@ -1062,6 +1259,9 @@ are robust in the discretization parameters. Open directions:
   032422.
 \bibitem{Xu92} J.~Xu, Iterative methods by space decomposition and subspace
   correction, \emph{SIAM Rev.} 34 (1992) 581--613.
+\bibitem{YYZ26} Y.~Yang, Y.~Yu, L.~Zhang, A structure-aware construction of quantum
+  BPX preconditioners for $Q_1$ finite element discretizations of
+  reaction--diffusion problems, arXiv:2610.06987 (2026).
 \end{thebibliography}
 
 \end{document}
