@@ -10,9 +10,9 @@ For Martin and John. Status as of 2026-11-04 (draft at commit `23e9124` plus unc
 - J-factorization 𝓑 = 𝒢ᵀ𝒥𝒢, with 𝒥 a signed permutation (one two-qubit gate).
 - Commuting lemma: F·P_ℓ = T_ℓ·F_ℓ with an element-local isometry. Checked for Q1–Q3 and for P1/P2 on nested meshes.
 - Time-periodic heat equation: QFT in time, √3 bound per frequency, and the coupling matrix as a scaled reflection with ‖𝒥_k‖ ≤ 1.
+- BPX robustness in β (Theorem 3.x, normalized weights, all s > 0; Q1, uniform grids). Proof in `paper/proof_bpx_robust.tex`, agent-checked; essentially known (Griebel–Oswald 1995), new is the factored form, s-family, normalization, constants.
 
 **Only numerical so far**
-- BPX robustness in β (Assumption 3.4), with level weights θ_ℓ.
 - 3D grids up to n ≈ 30k.
 
 **Only argued so far**
@@ -61,10 +61,12 @@ Realistic effort: about 2–3 months part time. Suggested leads are proposals, n
 - [ ] **Done when:** Prop. 3.7 becomes a theorem with an explicit constant, and Table 1 reports κ_α = α_G²/σ_min instead of the ideal ‖G‖²/σ_min.
 
 ### 1.2 β-robustness of the multilevel factor (suggested lead: John and Martin)
-- [ ] Literature: robust additive multilevel methods for I − ε²Δ (singularly perturbed reaction–diffusion). Is there a known result for level weights like θ_ℓ = min(1, √β h_ℓ⁻²)?
-- [ ] Try to prove Assumption 3.4 for s = 1 with β-independent c₀, c₁, or with an explicit dependence on the β-resolution parameter √β h⁻².
-- [ ] The 3^d floor in the unresolved regime comes from Jacobi scaling of the Q1 mass matrix. Is a better *block-encodable* mass factor possible, e.g. a lumped or Kronecker-structured one?
-- [ ] **Fallback if no proof:** keep it as an assumption, with the numerical evidence in Tables 2 and 3 and a clear statement.
+- [x] Literature: known. Griebel–Oswald, Adv. Comput. Math. 4 (1995), Thms 1–2 (truncated, s → ∞); Bramble–Pasciak–Vassilevski 2000; Bacuta–Hayes–Jacavage 2021 (≈ our s = 1). Plain BPX log growth is genuine (Kolev–Xu–Zhu 2016).
+- [x] Proof written for all s > 0 with normalized weights (`paper/proof_bpx_robust.tex`), checked by an agent (`paper/proof_bpx_robust_review.md`). Paper now states it as Theorem 3.x and uses normalized weights θ_ℓ/θ_L.
+- [ ] Read the sources ourselves: GO95 eqs. (23)–(24) for the Jackson lemma; Xu 1992 Lemma 6.1 and the Q1 transfer of strengthened Cauchy–Schwarz.
+- [ ] Decide whether the proof goes into the paper (appendix) or stays a supplement.
+- [ ] The mass-matrix floor in the unresolved regime is 3^d/(1−4^{-s}) (4, 12, 36 for s = 1), from Jacobi scaling of the Q1 mass matrix. Is a better *block-encodable* mass factor possible, e.g. a lumped or Kronecker-structured one?
+- [ ] Rerun 3D at larger L / smaller β to see the floor approach 36.
 
 ### 1.3 Fix the cross-frequency scaling for the heat equation (suggested lead: Martin)
 - [ ] Add per-frequency scalars that align the spectra of the frequency blocks, e.g. scale 𝓑_k by an a-priori estimate of 1/c₁,ₖ (Gershgorin or Fourier-symbol bound). The global κ then ≈ √3 · max_k(c₁,ₖ/c₀,ₖ).
@@ -128,7 +130,6 @@ Realistic effort: about 2–3 months part time. Suggested leads are proposals, n
 |---|---|---|
 | Prior art found in Phase 0 | the novelty claim weakens | reposition early; the heat and J-factorization parts are the most likely to stay new |
 | α_G much larger than ‖G‖ | the main theorem has bad constants | change the construction (Kronecker stack instead of sparse access); report honestly |
-| No β-robust proof | Assumption 3.4 stays an assumption | numerical evidence plus a clear statement; acceptable for SISC |
 | End-to-end cost shows no advantage | weaker "quantum" story | frame the paper as "the NLA that makes quantum solvers well posed" (already the framing) |
 
 ## Files

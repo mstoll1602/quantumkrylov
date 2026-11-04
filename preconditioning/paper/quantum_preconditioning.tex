@@ -141,9 +141,12 @@ optimization have so far been variational heuristics.
     (Theorem~\ref{thm:main}). It holds for $Q_k$ and $P_k$ elements on
     nested meshes.
   \end{itemize}
-\item We introduce level weights that make the multilevel factor robust in
-  $\beta$, up to the constant of the diagonally scaled mass matrix
-  (Section~\ref{sec:weights}).
+\item We adapt robust multilevel preconditioning for $I-\sqrt\beta\,\Delta$
+  \cite{GO95,BPV00} to the Jacobi-scaled factored form that the block
+  encoding needs. A family of normalized level weights makes the spectral
+  interval $[c_0,c_1]$ itself independent of $h$ and $\beta$
+  (Theorem~\ref{thm:robust}, Section~\ref{sec:weights}), with a
+  self-contained proof and explicit constants.
 \item For the time-periodic heat equation (Section~\ref{sec:heat}), the QFT
   in time reduces the problem to frequency-wise problems of the Poisson
   type, with effective parameter $\beta_k=\beta/r_k^2$.
@@ -511,9 +514,15 @@ C=RR^T=\sum_{\ell=1}^L\omega_\ell^2P_\ell P_\ell^T,\qquad
 \end{equation}
 with level weights
 \begin{equation}\label{eq:theta}
-\theta_\ell=\min\big(1,\sqrt\beta\,h_\ell^{-2}\big)^s,\qquad s\in\{0,1\}.
+\theta_\ell=\left(\frac{\min\big(1,\sqrt\beta\,h_\ell^{-2}\big)}{\min\big(1,\sqrt\beta\,h_L^{-2}\big)}\right)^{s},\qquad s\ge0 .
 \end{equation}
-The choice $s=0$ is plain BPX. Since $P_L=I$, $R$ has full row rank.
+The choice $s=0$ is plain BPX. Since $P_L=I$, $R$ has full row rank. The
+denominator normalizes the finest level to $\theta_L=1$, so that $\theta_\ell\le1$
+for all $\ell$. It changes $C$ only by a positive scalar and therefore does not
+affect $\kappa(CA_\beta)$. It does matter for the interval $[c_0,c_1]$ below:
+without it, $c_0$ would shrink like $(\sqrt\beta h_L^{-2})^s$ whenever the finest
+grid does not resolve $\beta$. Since the cost bounds below involve $c_0$
+itself, not only $c_1/c_0$, the normalization is needed.
 
 \begin{assumption}\label{ass:bpx}
 $\operatorname{spec}(CA_\beta)\subset[c_0,c_1]$, with $c_1/c_0$ bounded independently of $h$
@@ -527,17 +536,60 @@ concerns the singularly perturbed operator $I-\sqrt\beta\Delta$.
 \item \emph{Plain BPX} is robust in $h$ but degrades as $\beta\to0$
   (Section~\ref{sec:num}): coarse levels on which the mass term dominates
   ($\sqrt\beta h_\ell^{-2}<1$) all count the same smooth modes.
-\item \emph{The weights}~\eqref{eq:theta} with $s=1$ damp these levels. They
-  keep $\kappa(CA_\beta)$ small in all our tests, except when the grid does
-  not resolve $\beta$ at all ($h>\beta^{1/4}$). In that case $A_\beta\approx M$,
-  and $\kappa(CA_\beta)$ approaches the constant $3^d$ of the Jacobi-scaled
-  $Q_1$ mass matrix.
-\item \emph{Truncation does not work.} Simply removing the mass-dominated
-  levels makes things worse at intermediate $\beta$.
+\item \emph{The weights}~\eqref{eq:theta} with $s>0$ damp these levels
+  geometrically. With $s=1$ they keep $\kappa(CA_\beta)\le6.2$ in all our tests in
+  which the grid resolves $\beta$ ($h\lesssim\beta^{1/4}$). If it does not, then
+  $A_\beta\approx M$, and $\kappa(CA_\beta)$ approaches the ``mass-matrix floor''
+  $3^d/(1-4^{-s})$, i.e.\ $4$, $12$ and $36$ for $d=1,2,3$ and $s=1$.
+\item \emph{Truncation}, i.e.\ removing the mass-dominated levels altogether
+  (the limit $s\to\infty$), is also robust, but its constants are worse at
+  intermediate $\beta$: for example $\kappa(CA_\beta)=19.2$ versus $6.1$ for $s=1$
+  at $d=1$, $L=10$, $\beta=10^{-4}$.
 \end{itemize}
-\todo{Prove Assumption~\ref{ass:bpx} for $s=1$ with $\beta$-independent
-constants (robust additive multilevel methods for $I-\mu^2\Delta$); a better
-mass factor than diagonal scaling would lower the $3^d$ floor.}
+
+\begin{theorem}[robustness of the weighted factor]\label{thm:robust}
+Let $s>0$, $Q_1$ elements on uniform dyadic grids of $(0,1)^d$, and
+homogeneous Dirichlet conditions. Then Assumption~\ref{ass:bpx} holds with
+$c_0,c_1$ depending only on $d$ and $s$, uniformly in $L$ (i.e.\ $h$) and
+$\beta>0$.
+\end{theorem}
+A self-contained proof with explicit constants is given in the
+supplementary note~\cite{SuppProof}. It reduces $x^TC^{-1}x$ to a minimal
+multilevel decomposition (the fictitious-space identity
+\cite{GO95b,XZ02}), compares nodal and $L^2$ norms by Jacobi scaling, and
+uses two classical ingredients: the Jackson-type multilevel norm
+equivalence \cite[proof of Thm.~1]{GO95} and the strengthened
+Cauchy--Schwarz inequality \cite[Lemma~6.1]{Xu92}. The level weights make
+the mass contributions of the levels a geometric series, which removes
+the factor $\min(L,\log(1/\beta))$ of plain BPX. That factor is genuine
+for $s=0$ \cite[Rem.~4.5]{KXZ16}. The explicit constants are pessimistic by
+two to three orders of magnitude. The proof explains the structure, not
+the size of $\kappa(CA_\beta)$.
+
+\paragraph{Relation to robust multilevel methods.} Additive multilevel
+preconditioners for $I-\sqrt\beta\,\Delta$ that are uniform in $\beta$ and $h$ are
+classical.
+\begin{itemize}
+\item Griebel and Oswald \cite[Thms.~1--2]{GO95} prove robustness for
+  $Q_1$ elements on $(0,1)^d$, including nodal BPX and multilevel diagonal
+  scaling, with the mass-dominated coarse levels dropped. This is the
+  truncated limit $s\to\infty$ of~\eqref{eq:theta}.
+\item Bramble, Pasciak and Vassilevski \cite{BPV00} use the level weights
+  $(\sqrt\beta\,h_\ell^{-2}+1)^{-1}$ on differences of $L^2$ projections. Bacuta, Hayes and
+  Jacavage \cite{BHJ21} give a nodal version with lumped mass. Rewritten
+  in terms of the $P_\ell P_\ell^T$, these weights are within level-independent
+  factors of ours with $s=1$ when the grid resolves $\beta$.
+\item Yang, Yu and Zhang \cite[Thm.~2.1]{YYZ26} use our $s=0$ with exact
+  inverse mass matrices. Their bound $12dL^2$ is uniform in the reaction
+  coefficient but not in $L$.
+\end{itemize}
+Our contribution is therefore not robustness as such. It is the form
+required by the block encoding: a Jacobi-scaled factor $R$ in which every
+level is a scaled prolongation; a family of weights $s>0$ that contains
+the known choices; the normalization $\theta_L=1$, which makes $[c_0,c_1]$
+itself independent of $\beta$, which is needed in Section~\ref{sec:heat};
+and explicit constants. A better mass factor than Jacobi scaling would
+lower the floor $3^d/(1-4^{-s})$.
 
 \subsection{The two-sided system and its factorization}
 
@@ -856,7 +908,14 @@ effective parameter $\beta_k$, scaled by $r_k$.
 \item \emph{Multilevel factor.} $R_k=[\omega_{1,k}P_1,\dots,\omega_{L,k}P_L]$ with
   $\omega_{\ell,k}^2=\theta_{\ell,k}/\delta_{\ell,k}$, where
   $\delta_{\ell,k}=r_k(\frac{2h_\ell}3)^d+\sqrt\beta\frac{2d}{h_\ell}(\frac{2h_\ell}3)^{d-1}$ and
-  $\theta_{\ell,k}=\min(1,\sqrt{\beta_k}h_\ell^{-2})^s$.
+  $\theta_{\ell,k}$ the normalized weights~\eqref{eq:theta} with $\beta_k$ in place
+  of $\beta$. Then $C_kA_k=C(\beta_k)A_{\beta_k}$, where $C(\beta_k)$ and
+  $A_{\beta_k}=M+\sqrt{\beta_k}K$ are the Poisson quantities for parameter $\beta_k$.
+  By Theorem~\ref{thm:robust}, $\operatorname{spec}(C_kA_k)\subset[c_0,c_1]$ with the
+  \emph{same} $c_0,c_1$ for all $k$ \cite{SuppProof}. This is where the
+  normalization $\theta_{L,k}=1$ is essential: with unnormalized weights the
+  interval would shrink by $\min(1,\sqrt{\beta_k}h_L^{-2})^s$, which is small for
+  high frequencies when $\tau\lesssim2h_L^2$.
 \item \emph{Frequency enters only through scalars.} The prolongations $P_\ell$
   and isometries $T_\ell$ are independent of $k$.
 \item \emph{The level weights are no longer optional.} $\beta_k$ decreases from
@@ -886,8 +945,8 @@ The weight $\sqrt{r_k}$ on the value rows is essential: without it,
 $\|J_k\|$ would grow like $\sqrt\beta/\tau$.
 
 \begin{theorem}\label{thm:heatB}
-Suppose Assumption~\ref{ass:bpx} holds for all $A_k$ with constants $c_0,c_1$
-independent of $k$. Then the nonzero eigenvalues of $\B=\operatorname{blkdiag}_k(\B_k)$ lie
+Use the normalized weights, so that Assumption~\ref{ass:bpx} holds for all
+$A_k$ with constants $c_0,c_1$ independent of $k$ (Theorem~\ref{thm:robust}). Then the nonzero eigenvalues of $\B=\operatorname{blkdiag}_k(\B_k)$ lie
 in $[-c_1,-c_0/\sqrt3]\cup[c_0/\sqrt3,c_1]$, and
 $\kappa_\alpha(\B)\le\sqrt3\,\alpha_G^2/c_0$ with $\alpha_G\le C_d\sqrt L$. In particular,
 neither $N_t$ nor $\tau$ enters $\kappa_\alpha$.
@@ -1013,8 +1072,9 @@ Tables~\ref{tab:weights} and~\ref{tab:3d} compare plain and weighted BPX.
 \item Plain BPX degrades as $\beta\to0$, up to $44.6$ in 3D.
 \item The weights~\eqref{eq:theta} with $s=1$ keep $\kappa(CA_\beta)\le6.2$ whenever
   the grid resolves $\beta$ ($h\lesssim\beta^{1/4}$). In unresolved cases they
-  approach the Jacobi constant $3^d$ of the mass matrix, with $20.5$ as
-  the worst value in 3D.
+  approach the mass-matrix floor $3^d/(1-4^{-s})$ (4 in 1D and 12 in 2D for
+  $s=1$). The worst value in 3D is $20.5$; for finer grids and tiny $\beta$ it
+  should grow towards the 3D floor $36$.
 \end{itemize}
 
 \begin{table}[ht]
@@ -1160,11 +1220,13 @@ Remark~6.7.}
 \paragraph{Limitations.}
 \begin{itemize}
 \item The algorithms need fault-tolerant hardware.
-\item The constants ($C_d$, the $3^d$ floor, readout) matter in practice.
+\item The constants ($C_d$, the mass-matrix floor $3^d/(1-4^{-s})$, readout)
+  matter in practice.
 \item State preparation for general data and the end-to-end success
   probability need a full analysis.
-\item The robustness of the multilevel factor in $\beta$ is so far supported
-  numerically, not proven.
+\item The robustness of the multilevel factor in $\beta$ is proven
+  (Theorem~\ref{thm:robust}) only for $Q_1$ elements on uniform grids, and
+  with pessimistic constants.
 \end{itemize}
 
 \section{Conclusions and outlook}\label{sec:conclusions}
@@ -1194,8 +1256,14 @@ are robust in the discretization parameters. Open directions:
   amplification and estimation, \emph{Contemp. Math.} 305 (2002) 53--74.
 \bibitem{BNWA23} M.~Bagherimehrab, K.~Nakaji, N.~Wiebe, A.~Aspuru-Guzik, Fast
   quantum algorithm for differential equations, arXiv:2306.11802 (2023).
+\bibitem{BHJ21} C.~Bacuta, D.~Hayes, J.~Jacavage, Efficient discretization and
+  preconditioning of the singularly perturbed reaction-diffusion problem,
+  arXiv:2104.11337 (2021).
 \bibitem{BPX90} J.~H.~Bramble, J.~E.~Pasciak, J.~Xu, Parallel multilevel
   preconditioners, \emph{Math. Comp.} 55 (1990) 1--22.
+\bibitem{BPV00} J.~H.~Bramble, J.~E.~Pasciak, P.~S.~Vassilevski, Computational
+  scales of Sobolev norms with application to preconditioning, \emph{Math.\
+  Comp.} 69 (2000) 463--480.
 \bibitem{CJS13} B.~D.~Clader, B.~C.~Jacobs, C.~R.~Sprouse, Preconditioned quantum
   linear system algorithm, \emph{Phys. Rev. Lett.} 110 (2013) 250504.
 \bibitem{CKS17} A.~M.~Childs, R.~Kothari, R.~D.~Somma, Quantum algorithm for
@@ -1210,6 +1278,11 @@ are robust in the discretization parameters. Open directions:
 \bibitem{DP26} M.~Deiml, D.~Peterseim, Quantum realization of the finite element
   method, \emph{Math. Comp.} 95 (2026), no.~362, 2637--2668,
   doi:10.1090/mcom/4137; arXiv:2403.19512.
+\bibitem{GO95} M.~Griebel, P.~Oswald, Tensor product type subspace splittings
+  and multilevel iterative methods for anisotropic problems, \emph{Adv.\
+  Comput.\ Math.} 4 (1995) 171--206.
+\bibitem{GO95b} M.~Griebel, P.~Oswald, On the abstract theory of additive and
+  multiplicative Schwarz algorithms, \emph{Numer.\ Math.} 70 (1995) 163--180.
 \bibitem{GSLW19} A.~Gily\'en, Y.~Su, G.~H.~Low, N.~Wiebe, Quantum singular value
   transformation and beyond, \emph{Proc. STOC} (2019) 193--204.
 \bibitem{HJ13} R.~A.~Horn, C.~R.~Johnson, \emph{Matrix Analysis}, 2nd ed.,
@@ -1217,6 +1290,9 @@ are robust in the discretization parameters. Open directions:
 \bibitem{JLMY25} S.~Jin, N.~Liu, C.~Ma, Y.~Yu, Quantum preconditioning method for
   finite difference discretizations of the Poisson equation via
   Schr\"odingerization, arXiv:2505.06866 (2025).
+\bibitem{KXZ16} T.~Kolev, J.~Xu, Y.~Zhu, Multilevel preconditioners for
+  reaction-diffusion problems with discontinuous coefficients, \emph{J.\
+  Sci.\ Comput.} 67 (2016) 324--350.
 \bibitem{KK12} M.~Kollmann, M.~Kolmbauer, A preconditioned MinRes solver for
   time-periodic parabolic optimal control problems, \emph{Numer. Linear
   Algebra Appl.} (2012), doi:10.1002/nla.1842.
@@ -1253,12 +1329,17 @@ are robust in the discretization parameters. Open directions:
   for saddle point problems with applications to PDE-constrained
   optimization problems, \emph{SIAM J. Matrix Anal. Appl.} 29 (2007)
   752--773.
+\bibitem{SuppProof} M.~Stoll, J.~W.~Pearson, Robustness of the weighted BPX
+  factor for $M+\sqrt\beta K$, supplementary note (2026).
 \bibitem{TAWL21} Y.~Tong, D.~An, N.~Wiebe, L.~Lin, Fast inversion, preconditioned
   quantum linear system solvers, fast Green's-function computation, and
   fast evaluation of matrix functions, \emph{Phys. Rev. A} 104 (2021)
   032422.
 \bibitem{Xu92} J.~Xu, Iterative methods by space decomposition and subspace
   correction, \emph{SIAM Rev.} 34 (1992) 581--613.
+\bibitem{XZ02} J.~Xu, L.~Zikatanov, The method of alternating projections and
+  the method of subspace corrections in Hilbert space, \emph{J.\ Amer.\
+  Math.\ Soc.} 15 (2002) 573--597.
 \bibitem{YYZ26} Y.~Yang, Y.~Yu, L.~Zhang, A structure-aware construction of quantum
   BPX preconditioners for $Q_1$ finite element discretizations of
   reaction--diffusion problems, arXiv:2610.06987 (2026).

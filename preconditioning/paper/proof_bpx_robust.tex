@@ -21,8 +21,9 @@
 
 \noindent\emph{Status.} Steps marked \textbf{[proved]} are proved here
 completely. Steps marked \textbf{[cited]} use classical multilevel results,
-stated precisely as Lemmas~\ref{lem:jackson} and~\ref{lem:scs}; their exact
-sources and constants still have to be checked. Notation: $\nu:=\sqrt\beta>0$
+stated precisely as Lemmas~\ref{lem:jackson} and~\ref{lem:scs}, with sources.
+The argument was checked step by step and numerically (review of 4 Nov.\ 2026,
+\texttt{proof\_bpx\_robust\_review.md}). Notation: $\nu:=\sqrt\beta>0$
 (the paper uses $\varepsilon$ for the solver accuracy).
 
 \section{Setting}
@@ -43,8 +44,8 @@ $\operatorname{diag}(A_\ell)=\delta_\ell I$ is constant on the uniform grid. Wit
 \[
 C=\sum_{\ell=1}^L\omega_\ell^2P_\ell P_\ell^T,\qquad \omega_\ell^2=\frac{\tilde\theta_\ell}{\delta_\ell}.
 \]
-The paper uses $\theta_\ell=\min(1,t_\ell)^s$ with $s\in[0,1]$. Here we use the
-\emph{normalized} weights
+With $\theta_\ell=\min(1,t_\ell)^s$, $s\ge0$, we use the \emph{normalized} weights
+(as in the paper, eq.~(theta))
 \[
 \tilde\theta_\ell=\frac{\theta_\ell}{\theta_L}=\Big(\frac{\min(1,t_\ell)}{\min(1,t_L)}\Big)^s .
 \]
@@ -54,13 +55,13 @@ both choices. The \emph{interval} $[c_0,c_1]$ below, however, is independent of
 $\beta$ only for the normalized weights (relevant for the heat problem,
 Corollary~\ref{cor:heat}).
 
-\paragraph{Claim (Assumption 3.4).} For $s\in(0,1]$ there are $0<c_0\le c_1$,
+\paragraph{Claim (Assumption 3.4).} For $s>0$ there are $0<c_0\le c_1$,
 depending only on $d$ and $s$, with $\operatorname{spec}(CA_\beta)\subset[c_0,c_1]$ for all $L\ge1$ and
 $\nu>0$.
 
 \section{Reduction to a decomposition problem}
 
-\begin{lemma}[Lions; Xu--Zikatanov]\label{lem:lions}\textbf{[proved]}
+\begin{lemma}[fictitious-space identity; Griebel--Oswald 1995, Xu--Zikatanov 2002]\label{lem:lions}\textbf{[proved]}
 Let $C=\sum_kR_kD_k^{-1}R_k^T$ with $D_k$ symmetric positive definite and
 $\sum_k\operatorname{range}(R_k)=\R^n$. Then $C$ is SPD and, for every $x\in\R^n$,
 \[
@@ -126,8 +127,11 @@ c_0=\frac1{3d\,2^dK_0},\qquad c_1=\big(\tfrac32\big)^dK_1,\qquad
 \frac{c_1}{c_0}\le3d\cdot3^d\cdot K_0K_1 .
 \]
 The factor $3d\cdot3^d$ comes only from Lemma~\ref{lem:nodal}, i.e. from Jacobi
-scaling and the nodal basis. It is the ``mass-matrix floor'' seen in the
-numerics.
+scaling and the nodal basis. The comparison~\eqref{eq:NC} itself is nearly
+sharp, but its extremes are not attained by the same functions as those of
+$N(u)/a(u,u)$, so the actual $\kappa(CA_\beta)$ is much smaller. In the
+unresolved limit $\nu\to0$ one observes $\kappa(CM)\to3^d/(1-4^{-s})$ (4.000 for
+$d=1$, 11.93 for $d=2$, $L=6$, both with $s=1$).
 
 \section{Two regimes and the weights}
 
@@ -142,14 +146,14 @@ regimes.
   $\ell^*>1$.
 \end{itemize}
 
-\begin{lemma}\label{lem:lambda}\textbf{[proved]} For $s\in(0,1]$, in both regimes,
+\begin{lemma}\label{lem:lambda}\textbf{[proved]} For $s>0$, in both regimes,
 \[
 \text{(a)}\quad t_\ell\le\lambda_\ell\ \text{ for all }\ell,\qquad
 \text{(b)}\quad S:=\sum_{\ell=1}^L\lambda_\ell^{-1}\le\frac43+\frac1{1-4^{-s}} .
 \]
-For $s=0$, (a) still holds, but $S$ is of the order of the number of
-mass-dominated levels: $S\approx L$ in the unresolved regime and $S\approx\ell^*\approx\log_4(1/\nu)$
-in the resolved one.
+For $s=0$, (a) still holds, and $\tfrac12m\le S\le m+\tfrac43$, where
+$m=\#\{\ell:t_\ell<1\}$ is the number of mass-dominated levels: $m=L$ in the
+unresolved regime and $m=\ell^*-1=\lceil\log_4(1/\nu)\rceil-1$ in the resolved one.
 \end{lemma}
 \begin{proof}
 (a) If $t_\ell\ge1$ then $\lambda_\ell=1+t_\ell>t_\ell$. If $t_\ell<1$ then $\lambda_\ell\ge1>t_\ell$, since
@@ -160,6 +164,12 @@ at most $4/3$. For $\ell<\ell^*$, $\lambda_\ell^{-1}\le t_\ell^s=t_{\ell^*-1}^s4
 sums to at most $1/(1-4^{-s})$. For $s=0$ the bounds $\lambda_\ell^{-1}\le1$ on the mass-dominated
 levels are attained up to the factor $1+t_\ell<2$.
 \end{proof}
+
+\noindent The proof uses only $\tilde\theta_\ell\le1$ and the geometric decay, so it
+holds for every $s>0$. Letting $s\to\infty$ ($\tilde\theta_\ell=0$ for $t_\ell<1$ when
+$t_L\ge1$, and only level $L$ when $t_L<1$) gives $S\le4/3+1$, so the
+truncated method of Griebel and Oswald is covered as well. Numerically,
+$\max S=1/(1-4^{-s})$; the stated bound is valid but not sharp.
 
 \section{Two classical ingredients}
 
@@ -172,13 +182,19 @@ $L$ and all $u\in V_L$
 \sum_{\ell=1}^Lh_\ell^{-2}\|(Q_\ell-Q_{\ell-1})u\|^2\le C_Q\,|u|_{H^1}^2 .
 \]
 \end{lemma}
-\noindent Sources to check:
+\noindent Sources:
 \begin{itemize}
+\item Griebel--Oswald, Adv.\ Comput.\ Math.\ 4 (1995) 171--206, proof of
+  Thm.~1, eqs.~(23)--(24): $Q_1$ on $(0,1)^d$ with Dirichlet conditions;
+\item Bornemann--Yserentant, Numer.\ Math.\ 64 (1993) 455--476, Thm.~7.5
+  (stated for $P_1$; the proof uses only an approximation property and
+  carries over to $Q_1$);
 \item Oswald, \emph{Multilevel Finite Element Approximation}, 1994;
-\item Bornemann--Yserentant, Numer.\ Math.\ 64, 1993;
-\item Dahmen--Kunoth, Numer.\ Math.\ 63, 1992;
-\item Xu, SIAM Rev.\ 34, 1992.
+\item Xu, SIAM Rev.\ 34 (1992), Lemma~6.7.
 \end{itemize}
+Dirichlet conditions are needed: for $\ell=1$ the term with $Q_0=0$ uses
+Poincar\'e's inequality. Numerically $C_Q\approx0.444$ ($d=1$, converged) and
+$C_Q<0.5$ ($d=2$).
 Note that
 the easy argument via $\|(I-Q_\ell)u\|\lesssim h_\ell|u|_1$ only gives $C_Q=O(L)$; the
 $L$-independent bound is the deep part of BPX theory.
@@ -191,14 +207,19 @@ for $k\le\ell$, $u\in V_k$, $v\in V_\ell$,
 |v|_{H^1}^2\le C_Ih_\ell^{-2}\|v\|^2 .
 \]
 \end{lemma}
-\noindent Sources to check: Yserentant (Numer.\ Math.\ 49, 1986), Xu (SIAM
-Rev.\ 1992), Bramble--Pasciak--Xu (Math.\ Comp.\ 1990). For $Q_1$ on a uniform
-grid the inverse inequality holds with $C_I=4d\cdot3^d$, by the eigenvalue bounds
-$y^TK_\ell y\le4d\,h_\ell^{d-2}|y|^2$ and Lemma~\ref{lem:nodal}; an elementwise argument
-gives a smaller constant. The strengthened Cauchy--Schwarz inequality uses
-that $Q_1$ functions are harmonic on each coarse element (every $d$-linear
-monomial is harmonic), integration by parts on coarse elements, and a
-boundary-strip estimate for $v$.
+\noindent Sources: Xu, SIAM Rev.\ 34 (1992), Lemma~6.1, with rate
+$\gamma=2^{-1/2}$ for dyadic refinement (after Yserentant, Numer.\ Math.\ 49,
+1986); restated in Kolev--Xu--Zhu, J. Sci.\ Comput.\ 67 (2016), Lemma~4.3. The
+proof is for $P_1$. It transfers to $Q_1$ because every $d$-linear function
+is harmonic on each coarse element (integration by parts on coarse
+elements, a polynomial trace-inverse estimate, and a boundary-strip
+estimate for $v$); this transfer is our argument. Numerically $C_S\approx2.63$
+($d=1$) and $3.46$ ($d=2$), and the rate $1/2$ is sharp in 1D.
+
+For $Q_1$ on a uniform grid the inverse inequality holds with the sharp
+constant $C_I=12d$: in 1D the generalized eigenvalues of $(K_1,M_1)$ are
+$\frac{12}{h^2}\frac{\sin^2(\phi/2)}{2+\cos\phi}<\frac{12}{h^2}$, and in $d$ dimensions they are sums
+of $d$ such values. Hence $C_H=12d+2C_S\sqrt{12d}/(\sqrt2-1)$.
 
 \begin{lemma}[H$^1$ part of the upper bound]\label{lem:H1}\textbf{[proved from Lemma~\ref{lem:scs}]}
 For every decomposition $u=\sum_\ell u_\ell$, $u_\ell\in V_\ell$,
@@ -219,7 +240,7 @@ Schur test ($2a_ka_\ell\le a_k^2+a_\ell^2$).
 \section{The two bounds}
 
 \begin{lemma}[upper bound for $a$]\label{lem:upper}\textbf{[proved, given Lemma~\ref{lem:scs}]}
-For $s\in(0,1]$ and every decomposition $u=\sum_\ell u_\ell$,
+For $s>0$ and every decomposition $u=\sum_\ell u_\ell$,
 \[
 a(u,u)\le K_1\sum_\ell\lambda_\ell\|u_\ell\|^2,\qquad K_1:=\frac43+\frac1{1-4^{-s}}+C_H .
 \]
@@ -234,7 +255,7 @@ $t_\ell\le\lambda_\ell$ (Lemma~\ref{lem:lambda}(a)).
 
 \begin{lemma}[stable decomposition]\label{lem:lower}\textbf{[proved, given Lemma~\ref{lem:jackson}]}
 For every $u\in V$, $N(u)\le K_0\,a(u,u)$ with $K_0:=\max(5,2C_Q)$, for every
-$s\in[0,1]$.
+$s\ge0$.
 \end{lemma}
 \begin{proof}
 \emph{Unresolved regime.} Take $u_L=u$ and $u_\ell=0$ otherwise. Then $\lambda_L=1+t_L<2$
@@ -258,15 +279,18 @@ by Lemma~\ref{lem:jackson}.
 \section{Result}
 
 \begin{theorem}\label{thm:robust}
-Let $s\in(0,1]$ and use the normalized weights $\tilde\theta_\ell$. For all $L\ge1$ and
+Let $s>0$ and use the normalized weights $\tilde\theta_\ell$. For all $L\ge1$ and
 $\beta>0$,
 \[
 \operatorname{spec}(CA_\beta)\subset[c_0,c_1],\qquad c_0=\frac1{3d\,2^d\max(5,2C_Q)},\qquad
 c_1=\big(\tfrac32\big)^d\Big(\frac43+\frac1{1-4^{-s}}+C_H\Big).
 \]
 In particular $\kappa(CA_\beta)\le3d\cdot3^d\max(5,2C_Q)\big(\frac43+\frac1{1-4^{-s}}+C_H\big)$,
-independently of $h$ and $\beta$. The same condition number bound holds
-for the unnormalized weights $\theta_\ell$ of the paper.
+independently of $h$ and $\beta$. For the unnormalized weights $\theta_\ell$,
+$\operatorname{spec}(CA_\beta)\subset\theta_L[c_0,c_1]$ with $\theta_L=\min(1,t_L)^s$: the condition number
+bound is the same, but $c_0$ degrades by $t_L^s$ in the unresolved regime.
+Since the cost bounds of the paper involve $c_0$ itself, the paper uses the
+normalized weights.
 \end{theorem}
 \begin{proof}
 Combine~\eqref{eq:NC} with Lemmas~\ref{lem:upper} and~\ref{lem:lower}. The
@@ -278,16 +302,37 @@ Lemma~\ref{lem:lower} still holds, but in Lemma~\ref{lem:upper} the mass
 part contributes $S$, which is of the order of the number of mass-dominated
 levels. The resulting bound grows like $\log(1/\beta)$ in the resolved regime
 and like $L$ in the unresolved regime. This matches the observed
-degradation of plain BPX. It is also consistent with the $L$-dependence in
-Yang--Yu--Zhang (arXiv:2610.06987), whose weights do not damp mass-dominated
-levels (to be checked against their proof).
+degradation of plain BPX, and the growth is genuine: for unweighted levels
+$\lambda_{\max}(CA)\gtrsim m$ (test $u\in V_1$ split equally over the $m$
+mass-dominated levels; cf. Kolev--Xu--Zhu, J. Sci.\ Comput.\ 67 (2016),
+Remark~4.5). Yang--Yu--Zhang (arXiv:2610.06987, Thm.~2.1) use
+$\omega_\ell^2=(h_\ell^{-2}+c)^{-1}$ with exact $M_\ell^{-1}$, i.e.\ our $s=0$ with exact mass
+inverse. Their bound $12dL^2$ loses one factor $L$ at each end through
+per-level estimates; with Lemmas~\ref{lem:jackson} and~\ref{lem:scs} it improves
+to $O(\min(L,\log(1/\nu))+C_H)$.
 \end{remark}
 
 \begin{remark}[sharpness]
 The constants are far from sharp: for $d=3$ the factor $3d\cdot3^d=243$ alone
-exceeds the observed $\kappa(CA_\beta)\le20.5$. The proof explains the structure
+exceeds the observed $\kappa(CA_\beta)\le20.5$. With the computed $C_Q,C_S$ the
+bound evaluates to about $2.6\cdot10^3$ ($d=1$) and $2.9\cdot10^4$ ($d=2$, $C_I=12d$),
+against observed maxima $6.14$ and $11.5$; the actual $K_0\le1.28$ and
+$K_1\le29.5$. The proof explains the structure
 (geometric damping makes the mass part summable; the floor comes from
 Jacobi scaling), not the size of the constants.
+\end{remark}
+
+\begin{remark}[relation to the literature]
+Robust additive multilevel preconditioning of $-\varepsilon\Delta+I$ is known:
+Griebel--Oswald, Adv.\ Comput.\ Math.\ 4 (1995), Thms.~1--2 (nodal BPX and
+multilevel diagonal scaling for $Q_1$ with mass-dominated levels dropped,
+our $s\to\infty$); Bramble--Pasciak--Vassilevski, Math.\ Comp.\ 69 (2000)
+463--480 (weights $(\varepsilon h_\ell^{-2}+1)^{-1}$ on $L^2$-projection differences);
+Bacuta--Hayes--Jacavage, arXiv:2104.11337 (nodal version with lumped mass,
+whose level weights are within level-independent factors of ours with
+$s=1$ in the resolved regime). What is new here is the Jacobi-scaled
+factored form, the family $s>0$, the normalization that makes $[c_0,c_1]$
+independent of $\beta$, and the explicit constants.
 \end{remark}
 
 \begin{corollary}[time-periodic heat problem]\label{cor:heat}
