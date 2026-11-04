@@ -19,8 +19,9 @@ def kappa(L, d, beta, s):
     e = nonzero(np.linalg.eigvalsh(R.T @ Ab @ R))
     return e.max() / e.min()
 
-for d, Ls in [(1, [6, 8, 10]), (2, [4, 5])]:
-    for L in Ls:
-        for beta in [1, 1e-2, 1e-4, 1e-6, 1e-8, 1e-10]:
-            ks = [kappa(L, d, beta, s) for s in (0, 0.5, 1)]
-            print(f"d={d} L={L:2d} beta={beta:7.0e}  s=0: {ks[0]:6.2f}  s=1/2: {ks[1]:6.2f}  s=1: {ks[2]:6.2f}", flush=True)
+if __name__ == "__main__":
+    for d, Ls in [(1, [6, 8, 10]), (2, [4, 5])]:
+        for L in Ls:
+            for beta in [1, 1e-2, 1e-4, 1e-6, 1e-8, 1e-10]:
+                ks = [kappa(L, d, beta, s) for s in (0, 0.5, 1)]
+                print(f"d={d} L={L:2d} beta={beta:7.0e}  s=0: {ks[0]:6.2f}  s=1/2: {ks[1]:6.2f}  s=1: {ks[2]:6.2f}", flush=True)

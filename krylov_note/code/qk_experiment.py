@@ -10,6 +10,7 @@ Compares
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 rng = np.random.default_rng(0)
 
@@ -125,6 +126,6 @@ ax[1].semilogy(ms, condG, "o-", ms=3, color="C0")
 ax[1].set_xlabel("subspace dimension $m$")
 ax[1].set_ylabel(r"$\kappa_2(G)$, real-time basis")
 fig.tight_layout()
-fig.savefig("fig_qk.pdf")
+fig.savefig(Path(__file__).resolve().parent.parent / "fig_qk.pdf")   # next to the note
 print("final errors:", {k: v[-1] for k, v in err.items()})
 print("cond(G) at m=10,20,30:", condG[9], condG[19], condG[29])

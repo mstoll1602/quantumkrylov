@@ -77,7 +77,7 @@ estimation.
   vectors evenly over all rows, which is exactly the wrong property here.
 
 **Evidence.** Ising chain, $N = 10$, $n = 1024$. The table gives the number of
-basis vectors that carry 99% of the squared norm (script `qk_concentration.py`):
+basis vectors that carry 99% of the squared norm (script `code/qk_concentration.py`):
 
 | field $h$ | vector | standard basis | Hadamard basis |
 |---|---|---|---|

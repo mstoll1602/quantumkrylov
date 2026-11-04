@@ -818,7 +818,7 @@ convergence at all.
 \caption{Ising chain, $n=2^{10}$. Left: relative error of the smallest
 Ritz value for Lanczos and for the real-time Krylov method with exact
 and noisy matrix elements. Right: condition number of the exact Toeplitz
-Gram matrix $G$. Script: \texttt{qk\_experiment.py}.}
+Gram matrix $G$. Script: \texttt{code/qk\_experiment.py}.}
 \label{fig:exp}
 \end{figure}
 
@@ -1025,7 +1025,7 @@ the quantum computer serves as a sampler for column subset selection.
 The catch is that $B$ must be manageable, so the ground state has to be
 concentrated on relatively few basis vectors. Which basis is right
 depends on the problem. For the Ising chain with $N=10$ (script
-\texttt{qk\_concentration.py}), the number of basis vectors carrying 99\%
+\texttt{code/qk\_concentration.py}), the number of basis vectors carrying 99\%
 of $\|u_0\|^2$ is 83 in the standard basis versus 467 in the Hadamard
 basis for $h=0.5$, and 971 versus 16 for $h=2$. Near the critical value
 $h=1$ neither basis works well (793 versus 206 out of $1024$). Under

@@ -159,8 +159,24 @@ with \emph{subnormalization} $\alpha$ if a unitary circuit $U$ satisfies
 \[
 U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
 \]
-Applying $U$ to $[v;0]$ and keeping the first block (postselection) yields
-$Av/\|Av\|$. This succeeds with probability $\|Av\|^2/(\alpha\|v\|)^2$.
+Every block of a unitary matrix has norm at most one, so $\alpha\ge\|A\|$ for
+\emph{every} block encoding. How close $\alpha$ comes to $\|A\|$ depends on the
+construction. Applying $U$ to $[v;0]$ and keeping the first block
+(postselection) yields $Av/\|Av\|$. This succeeds with probability
+$\|Av\|^2/(\alpha\|v\|)^2$.
+
+A circuit is a product of unitary matrices (gates), each acting on a few
+of the tensor factors $\C^2$. For small problems, the whole product can be
+formed as an explicit matrix and checked. As an example, let $S$ be the
+cyclic shift (a permutation matrix) and $H=\frac1{\sqrt2}\begin{bmatrix}1&1\\1&-1\end{bmatrix}$. Then
+\[
+U=(H\otimes I)\begin{bmatrix}I&0\\0&-S\end{bmatrix}(H\otimes I)
+=\frac12\begin{bmatrix}I-S & I+S\\ I+S & I-S\end{bmatrix}
+\]
+is unitary, and it block encodes the difference matrix $I-S$ with $\alpha=2$.
+This is the simplest instance of a linear combination of unitaries (LCU):
+$H$ prepares the weights, and the middle factor selects $I$ or $-S$ according
+to one extra qubit.
 Rectangular matrices are padded with zeros to square matrices of
 power-of-two size. Block encodings combine as follows (subnormalizations in
 brackets):
@@ -523,9 +539,34 @@ $C_d$ depends only on $d$.
 \end{itemize}
 \end{proof}
 The sparse-access constant is pessimistic ($C_3\approx45$). Encoding $G_\ell$ as
-a weighted stack of Kronecker products of 1D two-term factors gives
-constants close to $\|G_\ell\|\le\sqrt{\theta_\ell}\,3^{d/2}$. \todo{compute
-$\alpha_G$ for the explicit construction; can the $\sqrt L$ be avoided?}
+a weighted stack of Kronecker products of 1D two-term factors should give
+constants close to $\|G_\ell\|\le\sqrt{\theta_\ell}\,3^{d/2}$.
+
+\paragraph{From bound to measurement.} The gap between the lower bound
+$\|G\|\approx2$ (Table~\ref{tab:poisson}) and the upper bound $C_d\sqrt L$ matters,
+because $\alpha_G$ enters the cost squared. For $d=3$ the two bounds differ by
+a factor of about $2000$ in $\alpha_G^2$. We therefore plan to build the block
+encoding of Proposition~\ref{prop:alphaG} as an explicit unitary matrix
+for small grids ($d=1$ with $L\le6$, $d=2$ with $L\le4$), using exactly the
+factors a circuit would use:
+\begin{itemize}
+\item LCUs of shifts for the 1D two-term factors, as in the example of
+  Section~\ref{sec:prelim};
+\item Kronecker products;
+\item the weighted stack over values and gradients;
+\item the isometries $T_\ell$, completed to unitaries;
+\item the concatenation over levels.
+\end{itemize}
+For this matrix we check two things:
+\begin{enumerate}
+\item it is unitary, and its leading block equals $G/\alpha_G$ (correctness);
+\item the value of $\alpha_G$ as a function of $L$, $d$ and $\beta$, compared with
+  $\|G\|$ (cost). This shows whether the $\sqrt L$ appears and how large $C_d$
+  really is.
+\end{enumerate}
+The effective condition number that QSVT faces is then
+$\kappa_\alpha=\alpha_G^2/\sigma_{\min}(\B)$, not the ideal $\|G\|^2/\sigma_{\min}(\B)$.
+\todo{carry out; can the $\sqrt L$ be avoided?}
 
 \begin{theorem}\label{thm:main}
 Under Assumption~\ref{ass:bpx}, QSVT applied to $\B=\G^T\J\G$ solves
@@ -738,7 +779,8 @@ $c_0$ that enters them.
 \section{Numerical experiments}\label{sec:num}
 
 All experiments use dense or sparse linear algebra in double precision,
-with scripts in the accompanying repository:
+with scripts in the folder \texttt{preconditioning/code} of the accompanying
+repository:
 \begin{itemize}
 \item \texttt{qp\_poisson\_check.py}: Table~\ref{tab:poisson}, Table~\ref{tab:loss};
 \item \texttt{qp\_bpx\_weights.py}: Table~\ref{tab:weights};
@@ -756,7 +798,9 @@ Table~\ref{tab:poisson} shows:
 \item the interval of Theorem~\ref{thm:sz} is attained;
 \item $\kappa(\B)$ on the range follows $\kappa(CA_\beta)$, as predicted by
   Theorem~\ref{thm:B};
-\item $\|G\|$ is $O(1)$;
+\item $\|G\|$ is $O(1)$. This is the smallest possible $\alpha_G$; the value
+  achieved by the explicit construction is still to be measured
+  (Section~\ref{sec:poisson}, ``From bound to measurement'');
 \item the factorization $\B=\G^T\J\G$ holds to machine precision in all
   cases.
 \end{itemize}
@@ -777,7 +821,9 @@ $d$ & $L$ & $\beta$ & $\kappa(\A)$ & $|\operatorname{spec}(P^{-1}\A)|$ & $\kappa
 2 & 5 & $10^{-6}$ & $4.2\cdot10^0$ & $[0.707,0.981]$ & 6.40 & 7.90 & 2.34\\
 \bottomrule
 \end{tabular}
-\caption{Poisson control with plain BPX ($s=0$). $\kappa(\B)$ is computed on the range.}
+\caption{Poisson control with plain BPX ($s=0$). $\kappa(\B)$ is computed on the
+range. $\|G\|$ is a lower bound for the subnormalization $\alpha_G$ of any block
+encoding of $G$.}
 \label{tab:poisson}
 \end{table}
 
