@@ -259,21 +259,31 @@ p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p|\le1\ \text{ on }[-
 \delta=\frac{\sigma_{\min}}{\alpha}.
 \]
 The bound $|p|\le1$ is needed because $p(\B/\alpha)$ must again be a block of a
-unitary. Since $p(0)=0$, the result is the scaled pseudoinverse $\delta\,\B^+$.
+unitary. Since $p(0)=0$, the result is the scaled pseudoinverse
+$\delta(\B/\alpha)^+=\sigma_{\min}\B^+$. The cost of a solve has two factors.
 \begin{itemize}
-\item In classical terms this is Chebyshev semi-iteration whose degree is
+\item \emph{Cost per run (the degree).} In classical terms this is Chebyshev semi-iteration whose degree is
   fixed in advance, namely $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$. The $\log(\kappa_\alpha/\varepsilon)$
   arises because $p$ must approximate $\delta/t$ to about $\varepsilon/\kappa_\alpha$ for the
   normalized output to satisfy~\eqref{eq:eps}. The polynomial
   depends only on the interval, not on $b$ or the actual spectrum. Unlike CG
   or MINRES, it cannot adapt.
-\item Postselecting $\delta\B^+b$ succeeds with probability
+\item \emph{Number of runs (the success probability).} Postselecting $\sigma_{\min}\B^+b$ succeeds with probability
   \[
-  \frac{\|\delta\B^+b\|^2}{\|b\|^2}\ \ge\ \frac1{\kappa_\alpha^2}.
+  a^2=\frac{\|\sigma_{\min}\B^+b\|^2}{\|b\|^2}\ \ge\ \frac1{\kappa_\alpha^2}.
   \]
-  Amplitude amplification then needs at most $\kappa_\alpha$ rounds.
+  Simply repeating the run until it succeeds would cost about $1/a^2$ runs.
+  \emph{Amplitude amplification} \cite{BHMT02} needs only about $\pi/(4a)\le\kappa_\alpha$
+  rounds. It uses two reflections: one flips the sign of the wanted
+  block, the other reflects about the output vector of the circuit (one
+  application of the circuit and its adjoint). Their product is a
+  rotation by $2\arcsin a$ in the plane spanned by the wanted and the
+  unwanted part, so $k$ rounds turn the success amplitude $a$ into
+  $\sin((2k+1)\arcsin a)$, which is close to one for $k\approx\pi/(4a)$.
+  In polynomial terms this is again QSVT, now of the scalar $a$ with the
+  odd Chebyshev polynomial $T_{2k+1}$. Details are in the supplement.
 \end{itemize}
-Plain QSVT inversion therefore costs $O(\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon))$ calls.
+Multiplying the two, plain QSVT inversion costs $O(\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon))$ calls.
 Variable-time amplitude amplification \cite{CKS17} or the discrete adiabatic
 method \cite{Costa22} achieve the optimal
 \begin{equation}\label{eq:cost}

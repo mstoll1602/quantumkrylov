@@ -359,6 +359,89 @@ not tight), step~3 (stacking is tight only if all components are equally
 saturated) and step~5 (the $\sqrt L$). Measuring $\alpha_G$ for the explicit
 construction (to-do item 1.1) quantifies exactly these three losses.
 
+\section{Amplitude amplification: a rotation in a plane}\label{sec:aa}
+
+A block encoding produces the wanted vector only as one block of a longer
+vector. Postselection keeps that block, but succeeds only with some
+probability. Amplitude amplification raises this probability to nearly one,
+at a cost proportional to $1/a$ instead of $1/a^2$, where $a$ is the success
+amplitude. It is the source of the factor $\kappa_\alpha^2$ in plain QSVT
+inversion (Section~2 of the paper).
+
+\paragraph{The setting.} Let $W$ be a unitary (e.g.\ the QSVT circuit for
+$p(\B/\alpha)$), $b$ a unit vector, and $u=e_0\otimes b$. Let $\Pi$ be the orthogonal
+projector onto the ``ancilla $=0$'' subspace, i.e.\ onto the first block. Then
+\[
+\psi:=Wu=\begin{bmatrix}x\\ r\end{bmatrix},\qquad x=\Pi\psi\ \text{(e.g.\ }x=\sigma_{\min}\B^+b),\qquad a:=\|x\|\le1 .
+\]
+Measuring the ancilla returns $x/\|x\|$ with probability $a^2$. Repeating until
+success costs about $1/a^2$ applications of $W$.
+
+\paragraph{Two reflections.} Define
+\[
+S_\Pi=I-2\Pi,\qquad S_\psi=I-2\psi\psi^*=W\,(I-2uu^*)\,W^*,\qquad Q:=-S_\psi S_\Pi .
+\]
+$S_\Pi$ flips the sign of the first block, which is a cheap circuit. $S_\psi$ needs
+one $W^*$, one reflection about $u$ (which requires running the preparation
+of $b$ backwards and forwards), and one $W$.
+
+\paragraph{The invariant plane.} Let $g=\Pi\psi/a$ (the good direction) and
+$h=(I-\Pi)\psi/\|(I-\Pi)\psi\|$ (the bad direction). They are orthonormal, and with
+$a=\sin\theta$,
+\[
+\psi=\sin\theta\,g+\cos\theta\,h .
+\]
+Both reflections map $\operatorname{span}\{g,h\}$ into itself: $S_\Pi g=-g$, $S_\Pi h=h$, and $S_\psi$
+reflects about the line orthogonal to $\psi$. In the basis $(g,h)$,
+\[
+S_\Pi=\begin{bmatrix}-1&0\\0&1\end{bmatrix},\qquad
+-S_\psi=2\psi\psi^*-I=\begin{bmatrix}-\cos2\theta&\sin2\theta\\ \sin2\theta&\cos2\theta\end{bmatrix},\qquad
+Q=\begin{bmatrix}\cos2\theta&\sin2\theta\\ -\sin2\theta&\cos2\theta\end{bmatrix},
+\]
+so $Q$ is the rotation by $2\theta$ towards $g$. Hence
+\[
+Q^k\psi=\sin\big((2k+1)\theta\big)\,g+\cos\big((2k+1)\theta\big)\,h .
+\]
+With $k\approx\pi/(4\theta)-\tfrac12$ the coefficient of $g$ is close to one, and a single
+measurement succeeds with probability $\sin^2((2k+1)\theta)\ge1-\sin^2\theta$ for
+the best integer $k$. The number of rounds is $k\approx\pi/(4a)$. Each round
+costs one $W$ and one $W^*$.
+
+\paragraph{Polynomial view.} Since $a=\sin\theta=\cos(\pi/2-\theta)$,
+\[
+\sin\big((2k+1)\theta\big)=(-1)^kT_{2k+1}(a),
+\]
+with $T_n$ the Chebyshev polynomial of the first kind. Amplitude
+amplification is therefore QSVT applied to the $1\times1$ ``matrix'' $a$ (the
+singular value of $\Pi W\Pi$ on $u$), with an odd polynomial of degree $2k+1$
+that maps $a$ close to $\pm1$. Its degree $O(1/a)$ follows the same law as the
+degree $O(1/\delta)$ of the polynomial approximating $\delta/t$ on $[\delta,1]$.
+
+\paragraph{Application to QSVT inversion.} The polynomial acts on $\B/\alpha$, so
+$p(\B/\alpha)\approx\delta(\B/\alpha)^+=\sigma_{\min}\B^+$ with $\delta=\sigma_{\min}/\alpha$. For
+$x=\sigma_{\min}\B^+b$ and $b\in\operatorname{range}\B$,
+\[
+a=\sigma_{\min}\|\B^+b\|\ \ge\ \frac{\sigma_{\min}}{\|\B\|}\ \ge\ \frac{\sigma_{\min}}{\alpha}=\frac1{\kappa_\alpha}.
+\]
+So at most about $(\pi/4)\kappa_\alpha$ rounds are needed, each containing $W$ of
+degree $D=O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$: in total
+$O(\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon))$ calls to the block encoding of $\B$. The two
+factors $\kappa_\alpha$ have different origins: one is the degree of $p$, the other
+the size of $\sigma_{\min}\B^+b$. Variable-time amplitude amplification (Childs,
+Kothari, Somma 2017) and the discrete adiabatic method (Costa et al.\ 2022)
+avoid multiplying them and reach $O(\kappa_\alpha\log(1/\varepsilon))$.
+
+\paragraph{Practical points.}
+\begin{itemize}
+\item The optimal $k$ depends on $a$, which is unknown. Exponential search
+  over $k$ (Brassard, H{\o}yer, Mosca, Tapp 2002) or fixed-point amplitude
+  amplification (Yoder, Low, Chuang 2014) cost only a constant factor more.
+\item Too many rounds rotate past $g$; the success probability oscillates
+  in $k$. This is the price of a non-adaptive polynomial, as for QSVT itself.
+\item $S_\psi$ requires that $b$ can be prepared by a circuit and that this
+  circuit can be inverted. This is a standing assumption of QLSAs.
+\end{itemize}
+
 \section{Numerical verification}
 
 \begin{table}[ht]
@@ -375,6 +458,7 @@ LCU, $k=4$ complex coefficients & $3.3\cdot10^{-15}$ & $3.9\cdot10^{-16}$\\
 stacking, $k=4$ & $1.3\cdot10^{-15}$ & $3.9\cdot10^{-17}$\\
 concatenation, $k=4$ & $1.6\cdot10^{-15}$ & $3.9\cdot10^{-17}$\\
 sparse, $n=8$, $s_r=s_c=4$ & $1.7\cdot10^{-15}$ & $0$\\
+amplitude amplification, $a=0.23$, 3 rounds & -- & $2.5\cdot10^{-15}$ (rotation formula)\\
 \bottomrule
 \end{tabular}
 \caption{Dense checks of all constructions

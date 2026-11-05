@@ -135,3 +135,26 @@ W = UL.conj().T @ UR
 print(f"{'sparse: isometries T_L, T_R':34s} |T_L^H T_L - I| {err_iso(TL):.1e}  |T_R^H T_R - I| {err_iso(TR):.1e}")
 report(f"sparse (s_r={sr}, s_c={sc})", W, W[:nn, :nn], S / (amax * np.sqrt(sr * sc)))
 print(f"   alpha = amax*sqrt(s_r s_c) = {amax * np.sqrt(sr * sc):.2f}  vs ||A|| = {np.linalg.norm(S, 2):.2f}")
+
+# amplitude amplification: rotation by 2*theta in span{g, h}, sin(theta) = a
+nA = 8
+A = crand(nA, nA) + 6 * np.eye(nA)                  # moderately conditioned
+U = dilation(A, 3.0 * np.linalg.norm(A, 2))           # loose alpha -> small success amplitude
+b = crand(nA, 1).ravel(); b /= np.linalg.norm(b)
+u = np.concatenate([b, np.zeros(nA)])                 # e_0 (x) b, ancilla outermost
+psi = U @ u
+Pi = np.diag(np.concatenate([np.ones(nA), np.zeros(nA)]))
+a = np.linalg.norm(Pi @ psi)
+th = np.arcsin(a)
+g = Pi @ psi / a
+hh = (psi - Pi @ psi) / np.linalg.norm(psi - Pi @ psi)
+S_Pi = np.eye(2 * nA) - 2 * Pi
+S_psi = U @ (np.eye(2 * nA) - 2 * np.outer(u, u.conj())) @ U.conj().T
+Q = -S_psi @ S_Pi
+kopt = int(np.floor(np.pi / (4 * th)))
+err, v = 0.0, psi.copy()
+for k in range(1, kopt + 1):
+    v = Q @ v
+    err = max(err, np.abs(v - (np.sin((2 * k + 1) * th) * g + np.cos((2 * k + 1) * th) * hh)).max())
+print(f"{'amplitude amplification':34s} a = {a:.3f}, rounds = {kopt}, rotation err {err:.1e}, "
+      f"success prob {a**2:.3f} -> {np.linalg.norm(Pi @ v)**2:.3f}")
