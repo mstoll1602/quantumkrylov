@@ -10,14 +10,14 @@ For Martin and John. Status as of 2026-11-04 (draft at commit `23e9124` plus unc
 - J-factorization 𝓑 = 𝒢ᵀ𝒥𝒢, with 𝒥 a signed permutation (one two-qubit gate).
 - Commuting lemma: F·P_ℓ = T_ℓ·F_ℓ with an element-local isometry. Checked for Q1–Q3 and for P1/P2 on nested meshes.
 - Time-periodic heat equation: QFT in time, √3 bound per frequency, and the coupling matrix as a scaled reflection with ‖𝒥_k‖ ≤ 1.
-- BPX robustness in β (Theorem 3.x, normalized weights, all s > 0; Q1, uniform grids). Proof in `paper/proof_bpx_robust.tex`, agent-checked; essentially known (Griebel–Oswald 1995), new is the factored form, s-family, normalization, constants.
+- BPX robustness in β (Theorem 3.5, normalized weights, all s > 0; Q1, uniform grids). Proof in `paper/proof_bpx_robust.tex`, agent-checked; essentially known (Griebel–Oswald 1995), new is the factored form, s-family, normalization, constants.
 
 **Only numerical so far**
 - 3D grids up to n ≈ 30k.
 
 **Only argued so far**
-- The subnormalization α_G ≤ C_d√L (Prop. 3.7, proof sketch with a pessimistic constant C₃ ≈ 45).
-- Hence the main Theorem 3.8 is still a *target*.
+- The subnormalization α_G ≤ C_d√L (Prop. 3.8, proof sketch with a pessimistic constant C₃ ≈ 45).
+- Hence the main Theorem 3.9 is still a *target*.
 - No end-to-end cost statement yet.
 
 **Known problem**
@@ -58,14 +58,19 @@ Realistic effort: about 2–3 months part time. Suggested leads are proposals, n
   - the concatenation over levels.
 - [ ] Check unitarity and that the leading block equals G/α_G. Tabulate α_G against ‖G‖ for varying L, d, β.
 - [ ] Decide whether the √L factor is real. If so, try a weighted concatenation or a strengthened Cauchy–Schwarz argument to remove it.
-- [ ] **Done when:** Prop. 3.7 becomes a theorem with an explicit constant, and Table 1 reports κ_α = α_G²/σ_min instead of the ideal ‖G‖²/σ_min.
+- [ ] **Done when:** Prop. 3.8 becomes a theorem with an explicit constant, and Table 1 reports κ_α = α_G²/σ_min instead of the ideal ‖G‖²/σ_min.
 
 ### 1.2 β-robustness of the multilevel factor (suggested lead: John and Martin)
 - [x] Literature: known. Griebel–Oswald, Adv. Comput. Math. 4 (1995), Thms 1–2 (truncated, s → ∞); Bramble–Pasciak–Vassilevski 2000; Bacuta–Hayes–Jacavage 2021 (≈ our s = 1). Plain BPX log growth is genuine (Kolev–Xu–Zhu 2016).
-- [x] Proof written for all s > 0 with normalized weights (`paper/proof_bpx_robust.tex`), checked by an agent (`paper/proof_bpx_robust_review.md`). Paper now states it as Theorem 3.x and uses normalized weights θ_ℓ/θ_L.
+- [x] Proof written for all s > 0 with normalized weights (`paper/proof_bpx_robust.tex`), checked by an agent (`paper/proof_bpx_robust_review.md`). Paper now states it as Theorem 3.5 and uses normalized weights θ_ℓ/θ_L.
 - [ ] Read the sources ourselves: GO95 eqs. (23)–(24) for the Jackson lemma; Xu 1992 Lemma 6.1 and the Q1 transfer of strengthened Cauchy–Schwarz.
 - [ ] Decide whether the proof goes into the paper (appendix) or stays a supplement.
-- [ ] The mass-matrix floor in the unresolved regime is 3^d/(1−4^{-s}) (4, 12, 36 for s = 1), from Jacobi scaling of the Q1 mass matrix. Is a better *block-encodable* mass factor possible, e.g. a lumped or Kronecker-structured one?
+- [ ] **Mass-matrix floor** 3^d/(1−4^{-s}) (4, 12, 36 for s = 1), from Jacobi scaling of the Q1 mass matrix; it matters for the heat problem when τ ≲ 2h². Remedy found, see `paper/nla_for_quantum.tex`, section "Removing the mass-matrix floor", and `code/qp_mass_floor.py`:
+  - level scaling D_ℓ = (M_ℓ + √β diag(K_ℓ) I)⁻¹ instead of δ_ℓ⁻¹ (floor → 4/3; resolved cases unchanged);
+  - encoding via the isometry U_val = F_val M^{-1/2} and sine-basis rotations, as in Yang–Yu–Zhang Secs. 3.4–3.5 (prior art for the encoding); measured κ_α: 3D unresolved 24.5 → 1.3, resolved within ~15% of Jacobi. Tight value encoding via U_val also improves the current Jacobi route by up to 2.4× in 3D (relevant for item 1.1).
+  - [ ] Adapt the robustness proof to D_ℓ.
+  - [ ] Gate count per call to G (sine transforms, angle arithmetic, 3-call amplification) vs the gain in κ_α.
+  - [ ] Decide whether the paper switches to D_ℓ or keeps Jacobi and mentions D_ℓ as a remedy.
 - [ ] Rerun 3D at larger L / smaller β to see the floor approach 36.
 
 ### 1.3 Fix the cross-frequency scaling for the heat equation (suggested lead: Martin)

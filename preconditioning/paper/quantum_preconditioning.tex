@@ -590,16 +590,20 @@ classical.
   in terms of the $P_\ell P_\ell^T$, these weights are within level-independent
   factors of ours with $s=1$ when the grid resolves $\beta$.
 \item Yang, Yu and Zhang \cite[Thm.~2.1]{YYZ26} use our $s=0$ with exact
-  inverse mass matrices. Their bound $12dL^2$ is uniform in the reaction
-  coefficient but not in $L$.
+  inverse mass matrices, $M_\ell^{-1/2}$ in the factor, which they encode
+  tightly through the sine transform \cite[Secs.~3.4--3.5]{YYZ26}. Their bound
+  $12dL^2$ is uniform in the reaction coefficient but not in $L$.
 \end{itemize}
 Our contribution is therefore not robustness as such. It is the form
 required by the block encoding: a Jacobi-scaled factor $R$ in which every
 level is a scaled prolongation; a family of weights $s>0$ that contains
 the known choices; the normalization $\theta_L=1$, which makes $[c_0,c_1]$
 itself independent of $\beta$, which is needed in Section~\ref{sec:heat};
-and explicit constants. A better mass factor than Jacobi scaling would
-lower the floor $3^d/(1-4^{-s})$.
+and explicit constants. A better mass factor than Jacobi scaling lowers
+the floor $3^d/(1-4^{-s})$: with $(M_\ell+\sqrt\beta\operatorname{diag}(K_\ell))^{-1}$ in place of
+$\delta_\ell^{-1}$, and the encoding of \cite{YYZ26} for the mass part, the floor
+drops to $4/3$ without loss in the subnormalization (supplement,
+\texttt{nla\_for\_quantum.tex}, Section ``Removing the mass-matrix floor'').
 
 \subsection{The two-sided system and its factorization}
 
@@ -931,6 +935,12 @@ effective parameter $\beta_k$, scaled by $r_k$.
 \item \emph{The level weights are no longer optional.} $\beta_k$ decreases from
   $\beta$ ($k=0$) to $\beta\tau^2/(\tau+2\sqrt\beta)^2$ ($k=N_t/2$), so high frequencies
   are mass-dominated.
+\item \emph{The mass-matrix floor matters here.} For high frequencies
+  $\sqrt{\beta_k}\approx\tau/2$, so the finest grid does not resolve $\beta_k$ once
+  $\tau\lesssim2h_L^2$. With such time steps, many frequencies sit at the floor
+  $3^d/(1-4^{-s})$ of Section~\ref{sec:weights} (36 in 3D for $s=1$), and since
+  the worst frequency determines $\kappa_\alpha$, the floor rather than the
+  resolved value $\approx6$ sets the cost.
 \end{itemize}
 
 \paragraph{Factorization with a scaled reflection.} Let

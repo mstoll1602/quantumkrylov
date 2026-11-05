@@ -314,7 +314,7 @@ problem noted in the paper.
 $\|A\|$, so it is never smaller than $\|A\|$, and often noticeably larger. In
 the random example of Table~\ref{tab:check}, $\alpha=15.3$ against $\|A\|=5.1$. This is
 the origin of the pessimistic constant $C_d$ in the paper's
-Proposition~3.7, and of the suggestion to use Kronecker and LCU
+Proposition~3.8, and of the suggestion to use Kronecker and LCU
 constructions instead of generic sparse access.
 
 \section{Summary of costs}
@@ -440,6 +440,163 @@ avoid multiplying them and reach $O(\kappa_\alpha\log(1/\varepsilon))$.
   in $k$. This is the price of a non-adaptive polynomial, as for QSVT itself.
 \item $S_\psi$ requires that $b$ can be prepared by a circuit and that this
   circuit can be inverted. This is a standing assumption of QLSAs.
+\end{itemize}
+
+\section{Removing the mass-matrix floor}\label{sec:floor}
+
+\paragraph{Where the floor comes from.} The multilevel factor of the paper
+scales each level by a scalar, $\omega_\ell^2=\theta_\ell/\delta_\ell$ with $\delta_\ell$ the (constant)
+diagonal of $A_{\beta,\ell}=M_\ell+\sqrt\beta K_\ell$. On a mass-dominated level this treats
+$M_\ell$ as a multiple of the identity, but $M_\ell=M_1^{\otimes d}$ has eigenvalues in
+$((h/3)^d,h^d)$, so $\kappa(\delta_\ell^{-1}M_\ell)\to3^d$. When the finest grid does not resolve
+$\beta$, $\kappa(CA_\beta)$ therefore approaches $3^d/(1-4^{-s})$: 4, 12 and 36 for $d=1,2,3$
+and $s=1$. This is harmless for Poisson control on fine grids, but in the
+time-periodic heat problem all high frequencies are mass-dominated once
+$\tau\lesssim2h_L^2$, and the worst frequency sets $\kappa_\alpha$.
+
+\paragraph{A better level scaling.} Replace the scalar $\delta_\ell^{-1}$ by
+\[
+D_\ell=(M_\ell+c_\ell I)^{-1},\qquad c_\ell=\sqrt\beta\,\operatorname{diag}(K_\ell)\quad(\text{a scalar}),
+\]
+i.e.\ the exact mass matrix plus Jacobi scaling of the stiffness part, with
+$C=\sum_\ell\tilde\theta_\ell P_\ell D_\ell P_\ell^T$. On mass-dominated levels $D_\ell\approx M_\ell^{-1}$, on
+stiffness-dominated levels $D_\ell\approx c_\ell^{-1}I$ as before. In the unresolved limit
+$CM=\sum_\ell\tilde\theta_\ell Q_\ell$ with $Q_\ell=P_\ell M_\ell^{-1}P_\ell^TM$ the matrix of the $L^2$
+projection onto $V_\ell$ ($Q_L=I$), so $\operatorname{spec}(CM)\subset[1,\sum_\ell\tilde\theta_\ell]$ and the floor
+drops to $1/(1-4^{-s})=4/3$. In the proof of the paper's Theorem~3.5 the
+nodal-versus-$L^2$ comparison (the factor $3d\cdot3^d$) becomes an identity on
+mass-dominated levels. Two simpler variants are worse: $M_\ell^{-1}$ on
+\emph{all} levels loses on resolved grids (stiffness-dominated levels want a
+scalar), and switching between $M_\ell^{-1}$ and Jacobi by level type gives
+$\kappa\approx10$ at intermediate $\beta$.
+
+\paragraph{The encoding challenge.} The new level factor is
+\[
+G_\ell=\sqrt{\tilde\theta_\ell}\begin{bmatrix}F_{\mathrm{val}}\\ \beta^{1/4}F_\nabla\end{bmatrix}D_\ell^{1/2},\qquad
+F_{\mathrm{val}}^TF_{\mathrm{val}}=M_\ell,\quad F_\nabla^TF_\nabla=K_\ell .
+\]
+$M_\ell$, $K_\ell$ and $D_\ell$ are all diagonalized by the $d$-dimensional sine transform,
+so everything can be read off mode by mode, with $\mu$ and $k$ the eigenvalues
+of $M_\ell$ and $K_\ell$.
+\begin{itemize}
+\item \emph{Value rows: (W2) fails for the plain product.} $F_{\mathrm{val}}$ is largest on
+  smooth modes ($\mu\approx h^d$), $D_\ell^{1/2}$ on oscillatory ones ($\mu\approx(h/3)^d$). On a
+  mass-dominated level $\|F_{\mathrm{val}}\|\,\|D_\ell^{1/2}\|\approx3^{d/2}$, whereas
+  $\|F_{\mathrm{val}}D_\ell^{1/2}\|\le1$. Encoding the product of the two factors
+  therefore inflates $\alpha$ by $3^{d/2}$ and $\kappa_\alpha$ by $3^d$: the floor moves from
+  $\kappa(CA_\beta)$ into the subnormalization.
+\item \emph{Gradient rows: nearly aligned.} $F_\nabla$ and $D_\ell^{1/2}$ are both largest on
+  oscillatory modes; the loss is a bounded factor.
+\end{itemize}
+
+\paragraph{The remedy: factor through an isometry.} Since $F_{\mathrm{val}}^TF_{\mathrm{val}}=M_\ell$
+exactly, $U_{\mathrm{val}}:=F_{\mathrm{val}}M_\ell^{-1/2}$ is an isometry, and
+\[
+F_{\mathrm{val}}D_\ell^{1/2}=U_{\mathrm{val}}\,g(M_\ell),\qquad g(\mu)=\sqrt{\mu/(\mu+c_\ell)}\in[0,1].
+\]
+A product with an isometry is always tight. Both factors can be encoded with
+$\alpha$ equal to their norm, using the construction of Yang, Yu and Zhang
+(arXiv:2610.06987, Secs.~3.4--3.5):
+\begin{enumerate}
+\item \emph{Functions of $M_\ell$} (here $g(M_\ell)$, there $M_\ell^{-1/2}$) are applied in
+  the sine basis: a sine transform (via the QFT), a rotation of a flag
+  qubit by an angle computed from the mode index, so that the amplitude on
+  the flag state $0$ is $g(\mu_j)/\max g$, and the inverse transform. This is a
+  block encoding with $\alpha=\max g$, i.e.\ tight; no polynomial
+  approximation is needed. For $D_\ell$ the angle depends on all $d$ mode
+  indices, since $M_\ell+c_\ell I$ is not a Kronecker product; the arithmetic is
+  still cheap.
+\item \emph{The isometry $U_{\mathrm{val}}$} is the Kronecker product of $d$ one-dimensional
+  isometries $E_1M_1^{-1/2}$ ($E_1$: values at the two Gauss points). The product
+  encoding of $E_1$ and $M_1^{-1/2}$ has $\alpha=\sqrt{4h/3}\,\sqrt{3/h}=2$, i.e.\ its block is
+  $F=\tfrac12E_1M_1^{-1/2}$ with $F^*F=\tfrac14I$. One step of \emph{oblivious} amplitude
+  amplification (Section~\ref{sec:aa}, with the reflection about the input
+  replaced by the reflection about the ancilla state $0$) has block
+  $3F-4FF^*F=2F$, i.e.\ it encodes the isometry with $\alpha=1$, using three calls
+  to $U$ or $U^*$. This works because $F^*F$ is a multiple of the identity:
+  all singular values are rotated by the same angle. The $d$-dimensional
+  $U_{\mathrm{val}}$ then has $\alpha=1^d=1$.
+\item \emph{Gradient rows.} The same idea works per direction $q$: with
+  $E_1=U_1M_1^{1/2}$,
+  \[
+  F_\nabla^{(q)}D_\ell^{1/2}=\big[U_1\otimes\dots\otimes C_1\otimes\dots\otimes U_1\big]\cdot
+  \Big[\big(M_1^{1/2}\otimes\dots\otimes I\otimes\dots\otimes M_1^{1/2}\big)D_\ell^{1/2}\Big],
+  \]
+  where $C_1$ (derivatives, $\alpha=\|C_1\|=2/\sqrt h$) sits in position $q$. The first
+  factor is a Kronecker product of isometries and $C_1$, hence tight; the
+  second is diagonal in the sine basis, hence tight. The two are nearly
+  aligned (both favour modes that oscillate in direction $q$), so the
+  product loses only a bounded factor. The directions are stacked.
+\end{enumerate}
+
+\paragraph{Measured effect.} Table~\ref{tab:floor} compares, with the same
+one-dimensional primitives for all three: the paper's Jacobi scaling, the
+Yang--Yu--Zhang factor ($M_\ell^{-1/2}$ on every level, weights $(1+t_\ell)^{-1}$, i.e.\
+$s=0$), and the hybrid scaling $D_\ell$ with $s=1$. The subnormalization is
+$\alpha_G^2=\sum_\ell\alpha_\ell^2$ (concatenation) and $\kappa_\alpha=\alpha_G^2/\sigma_{\min}(\B)$.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{rrr|rrr|rrrr}
+\toprule
+ & & & \multicolumn{3}{c|}{$\kappa(CA_\beta)$} & \multicolumn{4}{c}{$\kappa_\alpha=\alpha_G^2/\sigma_{\min}(\B)$}\\
+$d$ & $L$ & $\beta$ & Jacobi & YYZ & hybrid & Jacobi, raw & Jacobi, tight & YYZ & hybrid, tight\\
+\midrule
+1 & 8 & 1 & 5.0 & 7.3 & 5.0 & 16.0 & 16.0 & 35.7 & 16.0\\
+1 & 8 & $10^{-4}$ & 5.4 & 7.2 & 6.2 & 17.2 & 16.7 & 35.4 & 18.3\\
+1 & 8 & $10^{-8}$ & 3.6 & 4.4 & 4.5 & 7.8 & 7.4 & 17.1 & 8.3\\
+1 & 8 & $10^{-12}$ & 2.3 & 7.0 & 1.3 & 5.0 & 3.9 & 9.3 & 2.1\\
+\midrule
+2 & 5 & 1 & 4.1 & 9.8 & 4.1 & 26.6 & 18.0 & 37.8 & 18.1\\
+2 & 5 & $10^{-4}$ & 2.9 & 8.9 & 3.6 & 19.0 & 13.6 & 29.8 & 15.6\\
+2 & 5 & $10^{-8}$ & 3.8 & 4.1 & 1.3 & 12.9 & 8.0 & 8.3 & 3.6\\
+2 & 5 & $10^{-12}$ & 11.5 & 5.0 & 1.3 & 21.2 & 11.8 & 5.0 & 1.4\\
+\midrule
+3 & 3 & 1 & 4.2 & 9.7 & 4.1 & 43.2 & 17.8 & 30.2 & 17.8\\
+3 & 3 & $10^{-4}$ & 2.8 & 6.9 & 2.4 & 22.1 & 10.5 & 16.0 & 8.6\\
+3 & 3 & $10^{-8}$ & 20.5 & 3.0 & 1.5 & 69.8 & 25.8 & 3.3 & 2.0\\
+3 & 3 & $10^{-12}$ & 24.4 & 3.0 & 1.3 & 67.4 & 24.5 & 3.0 & 1.3\\
+\bottomrule
+\end{tabular}
+\caption{Preconditioner quality and effective condition number for three
+level scalings. ``Raw'': the one-dimensional value factor $E_1$ encoded
+directly ($\alpha=\sqrt{4h/3}$ against $\|E_1\|=\sqrt h$). ``Tight'': $E_1=U_1M_1^{1/2}$ with the
+isometry $U_1$ and a diagonal factor in the sine basis. $\alpha_G$ is computed from
+the combination rules with these primitive subnormalizations
+(\texttt{qp\_mass\_floor.py}).}
+\label{tab:floor}
+\end{table}
+
+Three observations.
+\begin{itemize}
+\item \emph{The remedy works.} In the unresolved 3D cases it reduces
+  $\kappa_\alpha$ from about $25$ (Jacobi, tight) to $1.3$. On resolved grids it is within
+  about $15\%$ of the Jacobi route, sometimes slightly better, sometimes
+  slightly worse. The floor does not reappear in $\alpha$.
+\item \emph{Tight primitives help the paper's construction too.} Even with
+  Jacobi scaling, encoding the value factor through the isometry $U_1$ lowers
+  $\kappa_\alpha$ by up to a factor $2.4$ in 3D (e.g.\ $43\to18$ at $\beta=1$), because the
+  raw value factor loses $(2/\sqrt3)^d$ in $\alpha^2$ per level and the raw gradient
+  factor more. This is relevant for Proposition~3.8 and to-do item~1.1.
+\item \emph{Yang--Yu--Zhang} encode tightly but do not damp mass-dominated
+  levels and use $M_\ell^{-1}$ also on stiffness-dominated levels; their
+  $\kappa(CA_\beta)$ is up to $9.8$ on resolved grids, and their $\kappa_\alpha$ is about twice
+  ours in 1D and 2D.
+\end{itemize}
+
+\paragraph{What remains.}
+\begin{itemize}
+\item The gate cost per call to $G$: per level a sine transform and its
+  inverse (QFT on $\ell+1$ qubits per dimension), reversible arithmetic for the
+  rotation angle, and the three-call amplification of the value isometry.
+  All of this is polylogarithmic, but it multiplies the cost of every call
+  to $G$ by a constant that has to be weighed against the gain in $\kappa_\alpha$.
+\item Adapting the robustness proof to $D_\ell$ (straightforward: the
+  nodal lemma becomes an identity on mass-dominated levels).
+\item Prior art: the encoding of $M_\ell^{-1/2}$ and of the normalized value map
+  is due to Yang--Yu--Zhang. New would be the hybrid scaling $D_\ell$ with damped
+  weights, which is what makes the floor disappear without losing on
+  resolved grids.
 \end{itemize}
 
 \section{Numerical verification}
