@@ -41,9 +41,65 @@ on a few factors and as the identity on the rest. Two operations are free:
 \item adding fresh factors that start in the first basis vector $e_0$.
 \end{itemize}
 
+\paragraph{Ancillas.} The qubits are split into two groups. The \emph{system
+register} holds the data: a vector $v\in\C^n$ with $n=2^k$ uses $k$ qubits. All
+further qubits are \emph{ancillas} (auxiliary qubits), $a$ of them, so the full
+space is $\C^{2^a}\otimes\C^n$. An ancilla is defined by its role, not by any physical
+difference: it is an extra tensor factor that
+\begin{itemize}
+\item starts in the first basis vector $e_0$ (in physics notation $|0\rangle$),
+  so that the input $v$ becomes $e_0\otimes v$;
+\item serves as workspace for a computation that could not be done on the
+  system register alone, because only unitary matrices can be applied;
+\item at the end is either \emph{measured} (see the paragraph on postselection below) or
+  returned to $e_0$, so that it is no longer coupled to the system and
+  can be reused.
+\end{itemize}
+In matrix terms, adding $a$ ancillas embeds $\C^n$ into the larger space
+$\C^{2^an}$ as the first block, $v\mapsto[v;0;\dots;0]$. A unitary on the larger
+space can act on that block in a non-unitary way, as long as it moves the
+surplus into the other blocks. This is exactly what a block encoding
+does: its leading block, ``ancillas in $e_0$ on input and on output'', is
+$A/\alpha$, and everything else is where the remainder goes.
+
+Ancillas get names according to their role:
+\begin{itemize}
+\item a \emph{flag} qubit marks success ($e_0$) or failure ($e_1$), as in a
+  rotation with amplitude $g(\mu_j)$ on $e_0$ (Section~\ref{sec:floor});
+\item an \emph{index register} of $\lceil\log_2k\rceil$ qubits holds a label $j=1,\dots,k$,
+  e.g.\ which term of a linear combination or which level of a multilevel
+  factor is applied;
+\item \emph{work registers} hold intermediate results of reversible
+  arithmetic, e.g.\ a rotation angle, and must be returned to $e_0$
+  (``uncomputed'') afterwards.
+\end{itemize}
+The number of ancillas is part of the cost (qubits), but usually a minor
+one: one for the Halmos dilation, $\lceil\log_2k\rceil$ for a linear combination of
+$k$ terms, $a_A+a_B$ for a product or a Kronecker product. The more important
+point is that ancillas must be \emph{clean}: a block encoding requires them
+to be in $e_0$ on input, and reusing an ancilla that is not back in $e_0$
+brings discarded components into the leading block (Section~\ref{sec:prod}).
+
 \paragraph{Ordering.} We write extra registers (ancillas, index registers) as
 the \emph{outer} Kronecker factors and the system as the innermost one. A
 vector in $\C^2\otimes\C^n$ is therefore a stacked vector $[v_0;v_1]$, and $e_0\otimes v=[v;0]$.
+
+\paragraph{States and measurement.} The state of a quantum computer is a
+\emph{unit} vector $\psi$; a vector $v$ is stored as the state $v/\|v\|$. A circuit
+maps $\psi$ to $U\psi$, which is again a unit vector because $U$ is unitary.
+Measuring a register is the only way to obtain information, and in matrix
+terms it works as follows (the Born rule). Split $\psi$ into blocks according
+to the basis states of the measured register, $\psi=[\psi_0;\psi_1;\dots]$, with
+$\Pi_j$ the orthogonal projector onto block $j$. Then
+\begin{itemize}
+\item outcome $j$ occurs with probability $\|\Pi_j\psi\|^2=\|\psi_j\|^2$; these
+  probabilities sum to $\|\psi\|^2=1$;
+\item after outcome $j$ the state is $\Pi_j\psi/\|\Pi_j\psi\|$, i.e.\ the block $\psi_j$,
+  renormalized, with all other blocks set to zero.
+\end{itemize}
+A measurement thus picks one block at random, with probability equal to
+its squared norm, and renormalizes it. The norm of the selected block is
+lost; only its direction survives.
 
 \paragraph{Block encodings.} A unitary $U\in\C^{2^an\times2^an}$ is a block encoding of
 $A\in\C^{n\times n}$ with subnormalization $\alpha$ if its leading block is $A/\alpha$:
@@ -52,8 +108,38 @@ $A\in\C^{n\times n}$ with subnormalization $\alpha$ if its leading block is $A/\
 U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
 \]
 Applying $U$ to $[v;0]$ gives $[Av/\alpha;\ w]$ for some $w$. Measuring the
-ancilla and keeping the outcome ``$0$'' (\emph{postselection}) leaves
-$Av/\|Av\|$, with probability $\|Av\|^2/(\alpha\|v\|)^2$.
+ancilla and keeping the outcome ``$0$'' is called \emph{postselection}.
+
+\paragraph{What postselection yields, and what $\alpha$ costs.}\label{sec:post} The input state is
+the unit vector $u=[v/\|v\|;\,0]$, and after the circuit
+\[
+\psi=Uu=\begin{bmatrix}Av/(\alpha\|v\|)\\ w'\end{bmatrix}.
+\]
+By the measurement rule, the outcome ``ancilla $=0$'' occurs with probability
+equal to the squared norm of the first block,
+\[
+p=\frac{\|Av\|^2}{\alpha^2\|v\|^2},
+\]
+and the state afterwards is that block, renormalized:
+\[
+\frac{Av/(\alpha\|v\|)}{\|Av\|/(\alpha\|v\|)}=\frac{Av}{\|Av\|}.
+\]
+Both $\alpha$ and $\|v\|$ cancel. Hence:
+\begin{itemize}
+\item the \emph{result} of postselection does not depend on $\alpha$: it is always
+  the direction $Av/\|Av\|$;
+\item the \emph{success probability} does: it scales like $1/\alpha^2$. A loose
+  encoding ($\alpha\gg\|A\|$) means more failed runs, about $1/p$ of them, or
+  about $1/\sqrt p$ rounds of amplitude amplification
+  (Section~\ref{sec:aa}).
+\end{itemize}
+This is why $\alpha$ is a cost and not part of the answer. Note also that $\alpha$
+is a property of the encoding, fixed by $\|A\|$ and the tightness of the
+circuit, while $\|Av\|$ depends on the input: even with the ideal $\alpha=\|A\|$,
+$p$ equals one only if $v$ is a top right singular vector of $A$, and it is
+about $\sigma_{\min}^2/\alpha^2$ if $v$ is close to the smallest one. Instead of
+measuring, one can also continue to apply further unitaries to $\psi$; this is
+how QSVT composes block encodings without intermediate postselection.
 
 For rectangular $A\in\C^{m\times n}$ the rows and the columns are selected by
 different projections. These are $P_{\rm out}$ and $P_{\rm in}$, both with
@@ -164,7 +250,7 @@ $\alpha_\B=\alpha_G^2$.
   between the two bounds we are.
 \end{itemize}
 
-\section{Products: fresh ancillas}
+\section{Products: fresh ancillas}\label{sec:prod}
 
 Let $U_A=\begin{bmatrix}X_A&Y_A\\Z_A&*\end{bmatrix}$ and $U_B=\begin{bmatrix}X_B&Y_B\\Z_B&*\end{bmatrix}$
 be block encodings with $X_A=A/\alpha_A$ and $X_B=B/\alpha_B$.

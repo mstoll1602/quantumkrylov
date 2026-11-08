@@ -66,119 +66,120 @@ cannot be expected.
 Quantum linear system algorithms (QLSAs) prepare a quantum state proportional
 to the solution $x$ of $Ax=b$. They use a number of calls to a circuit
 encoding $A$ that scales like $\kappa\log(1/\varepsilon)$, where $\varepsilon$ is the accuracy of
-the prepared solution state \cite{CKS17,GSLW19,Costa22}. The
-size $n$ of the system enters only through the circuit cost, which is
-typically polylogarithmic in $n$ for structured problems. Discretized PDEs are
-the obvious application, but the condition number of a discretized
-differential operator grows with the resolution, e.g. like $h^{-2}$ for
-second-order elliptic problems. Without preconditioning, the dependence on
-$\kappa$ cancels the gain in $n$ \cite{MP16,LMS22}.
+the prepared solution state \cite{CKS17,GSLW19,Costa22}. The size $n$ of the
+system enters only through the cost of that circuit, which is typically
+polylogarithmic in $n$ for structured problems. Discretized partial
+differential equations are therefore an obvious application. The condition
+number of a discretized differential operator, however, grows with the
+resolution, like $h^{-2}$ for second-order elliptic problems, and without
+preconditioning this growth cancels the gain in $n$ \cite{MP16,LMS22}.
 
-Preconditioning for QLSAs has been studied:
-\begin{itemize}
-\item by sparse approximate inverses \cite{CJS13};
-\item by ``fast inversion'' of a dominant part of the matrix \cite{TAWL21};
-\item by wavelet bases \cite{BNWA23};
-\item for elliptic finite element discretizations, by Deiml and Peterseim
-  \cite{DP26}. Their work is the basis of our Section~\ref{sec:poisson}.
-  \begin{itemize}
-  \item They write the stiffness matrix as $C_L^T(D_A\otimes I)C_L$, where $C_L$ maps
-    nodal values to gradients in an $L^2$-orthonormal basis of discontinuous
-    $Q_1$ functions, and $D_A$ holds the (possibly variable) diffusion
-    coefficient.
-  \item They apply the BPX preconditioner as a generating system $F$, with
-    $FF^T$ the preconditioner, to this factor.
-  \item A commutative diagram (gradient on the coarse level, followed by an
-    inclusion with orthonormal columns) gives a block encoding of the
-    preconditioned factor whose normalization grows only linearly in the
-    number of levels.
-  \item They introduce the effective condition number (subnormalization
-    times condition number), and they ran small instances on quantum
-    hardware.
-  \end{itemize}
-  Related constructions are the finite-difference analogue \cite{JLMY25} and
-  the extension to reaction--diffusion problems $-\Delta u+cu$ with a bound
-  uniform in $c$ \cite{YYZ26};
-\item empirically, for CFD matrices, comparing several preconditioners and
-  ways of encoding them \cite{LS25};
-\item for the Newton systems of quantum interior point methods
-  \cite{QIPMreview}, which become increasingly ill conditioned along the
-  central path.
-\end{itemize}
+Preconditioning for QLSAs has accordingly received attention. Early
+proposals used sparse approximate inverses \cite{CJS13}, ``fast inversion''
+of a dominant part of the matrix \cite{TAWL21}, and wavelet bases
+\cite{BNWA23}; more recently, preconditioners and ways of encoding them
+have been compared empirically for CFD matrices \cite{LS25}, and the
+increasingly ill-conditioned Newton systems of quantum interior point
+methods have been studied \cite{QIPMreview}. For elliptic finite element
+discretizations, Deiml and Peterseim \cite{DP26} gave the first construction
+with a provably mesh-independent cost, and their work is the starting point
+of our Section~\ref{sec:poisson}. They write the stiffness matrix as
+$C_L^T(D_A\otimes I)C_L$, where $C_L$ maps nodal values to gradients in an
+$L^2$-orthonormal basis of discontinuous $Q_1$ functions and $D_A$ holds the
+diffusion coefficient, and they apply BPX to this factor in the form of a
+generating system. A commutative diagram, in which the gradient is taken on
+the coarse level and then transferred by an inclusion with orthonormal
+columns, yields a block encoding of the preconditioned factor whose
+normalization grows only linearly in the number of levels. They also
+introduced the \emph{effective condition number}, the product of
+subnormalization and condition number, which governs the cost, and ran
+small instances on quantum hardware. Jin, Liu, Ma and Yu \cite{JLMY25} gave a
+finite-difference analogue, and Yang, Yu and Zhang \cite{YYZ26} extended the
+construction to reaction--diffusion problems $-\Delta u+cu$ with a bound
+uniform in $c$.
+
 These works make clear that preconditioning for a quantum solver is a
 different problem from classical preconditioning
-(Section~\ref{sec:prelim}). Only a bound on the condition number counts,
-not the distribution of the eigenvalues. The preconditioner must be
-realized as a circuit that \emph{multiplies}. And the normalizations of
-all factors enter the cost.
+(Section~\ref{sec:prelim}). Only a bound on the condition number counts, not
+the distribution of the eigenvalues; the preconditioner must be realized as
+a circuit that \emph{multiplies}, not one that solves; and the
+normalizations of all factors enter the cost, so that a good classical
+preconditioner can be useless if it is encoded as a separate factor.
 
-\paragraph{Gap.} The saddle-point systems of PDE-constrained optimization
-have not been considered from this angle. Classically, they are the
-prototype for parameter-robust block preconditioners
-\cite{RDW10,SZ07,PW12}, which are robust in the mesh size $h$ and the
-regularization parameter $\beta$. Quantum approaches to PDE-constrained
-optimization have so far been variational heuristics.
+The saddle-point systems of PDE-constrained optimization have not been
+considered from this angle. Classically, they are the prototype for
+parameter-robust block preconditioners, which are robust in both the mesh
+size $h$ and the regularization parameter $\beta$ \cite{RDW10,SZ07,PW12}. On
+the quantum side, PDE-constrained optimization has been approached with
+variational heuristics \cite{SG24}, with a quantum optimizer acting on a
+block-encoded objective \cite{Sato25}, and, for ODE-constrained
+linear-quadratic regulation, by applying a QLSA to the optimality system
+without preconditioning \cite{Huang26}. None of these addresses the
+dependence of the KKT system of a PDE-constrained problem on $h$ and $\beta$,
+which is exactly what decides whether a QLSA can be competitive.
 
-\paragraph{Contributions.}
-\begin{enumerate}
-\item We formulate design principles for preconditioners of QLSAs in matrix
-  terms, centred on the effective condition number $\kappa_\alpha$
-  (Section~\ref{sec:prelim}).
-\item For distributed control of the Poisson equation
-  (Section~\ref{sec:poisson}), we combine the Sch\"oberl--Zulehner block
-  preconditioner with a diagonally scaled BPX factor $R$, applied on both
-  sides.
-  \begin{itemize}
-  \item The resulting matrix factors as $\G^*\J\G$. Here $\J$ is a single
-    two-qubit reflection, and $\G$ maps multilevel coefficients to values
-    and gradients at quadrature points.
-  \item The block encoding of $\G$, with normalization $O(\sqrt{\log h^{-1}})$, builds
-    on the commuting diagram of Deiml and Peterseim \cite{DP26}, extended to
-    the mass term in \cite{YYZ26}. We formulate it through quadrature
-    points, with an \emph{element-local isometry} (Lemma~\ref{lem:commute}),
-    so that it covers $Q_k$ and $P_k$ elements.
-  \item The effective condition number is bounded independently of $h$
-    (Theorem~\ref{thm:main}). It holds for $Q_k$ and $P_k$ elements on
-    nested meshes.
-  \end{itemize}
-\item We adapt robust multilevel preconditioning for $I-\sqrt\beta\,\Delta$
-  \cite{GO95,BPV00} to the Jacobi-scaled factored form that the block
-  encoding needs. A family of normalized level weights makes the spectral
-  interval $[c_0,c_1]$ itself independent of $h$ and $\beta$
-  (Theorem~\ref{thm:robust}, Section~\ref{sec:weights}), with a
-  self-contained proof and explicit constants.
-\item For the time-periodic heat equation (Section~\ref{sec:heat}), the QFT
-  in time reduces the problem to frequency-wise problems of the Poisson
-  type, with effective parameter $\beta_k=\beta/r_k^2$.
-  \begin{itemize}
-  \item We prove a bound of $\sqrt3$ for the block preconditioner, uniform
-    in $h$, $\tau$, $\beta$ and the frequency (Theorem~\ref{thm:heatsz}).
-  \item The coupling matrix becomes a scaled reflection of norm at most
-    one.
-  \item Neither the number of time steps nor the step size enters the
-    effective condition number.
-  \end{itemize}
-\item We verify all bounds and factorizations numerically in one, two and
-  three dimensions (Section~\ref{sec:num}). We give an honest discussion of
-  complexity: an asymptotic advantage over optimal classical solvers
-  requires $d=3$ for the elliptic problem. For the time-periodic problem it
-  requires data that are rough in time (Section~\ref{sec:discussion}).
-\end{enumerate}
+In this paper we develop preconditioners for these KKT systems under the
+quantum rules. We first formulate design principles for preconditioners of
+QLSAs in matrix terms, centred on the effective condition number $\kappa_\alpha$
+(Section~\ref{sec:prelim}). For distributed control of the Poisson equation
+(Section~\ref{sec:poisson}), we combine the Sch\"oberl--Zulehner block
+preconditioner with a diagonally scaled BPX factor $R$ applied on both sides
+of the KKT matrix. The resulting matrix factors as $\G^*\J\G$, where $\J$ is a
+single two-qubit reflection that carries the indefiniteness and $\G$ maps
+multilevel coefficients to values and gradients at quadrature points. The
+block encoding of $\G$, with normalization $O(\sqrt{\log h^{-1}})$, builds on the
+commuting diagram of \cite{DP26,YYZ26}; we formulate it through quadrature
+points with an element-local isometry (Lemma~\ref{lem:commute}), so that it
+covers $Q_k$ and $P_k$ elements on nested meshes, and obtain an effective
+condition number bounded independently of $h$ (Theorem~\ref{thm:main}).
+
+To make the multilevel factor robust in $\beta$ as well, we adapt robust
+multilevel preconditioning for $I-\sqrt\beta\,\Delta$ \cite{GO95,BPV00} to the
+Jacobi-scaled factored form that the block encoding needs. A family of
+normalized level weights makes the spectral interval $[c_0,c_1]$ itself
+independent of $h$ and $\beta$, and we give a self-contained proof with
+explicit constants (Theorem~\ref{thm:robust}).
+
+For the time-periodic heat equation (Section~\ref{sec:heat}), a quantum
+Fourier transform in time reduces the problem to frequency-wise problems of
+the Poisson type with effective parameter $\beta_k=\beta/r_k^2$. Extending a
+result of Krendl, Simoncini and Zulehner \cite{KSZ13} from purely imaginary
+to general backward-Euler symbols, we show that the block preconditioner
+has a bound $\sqrt3$ uniform in $h$, $\tau$, $\beta$ and the frequency
+(Theorem~\ref{thm:heatsz}). The coupling matrix becomes a scaled reflection
+of norm at most one, and neither the number of time steps nor the step size
+enters the effective condition number.
+
+We verify all bounds and factorizations numerically in one, two and three
+dimensions (Section~\ref{sec:num}). Finally, we discuss complexity honestly
+(Section~\ref{sec:discussion}): an asymptotic advantage over optimal
+classical solvers requires $d=3$ for the elliptic problem, and for the
+time-periodic problem it requires data that are rough in time.
+Section~\ref{sec:impl} describes the implementation, and
+Section~\ref{sec:conclusions} concludes with an outlook.
 
 \section{Quantum linear algebra in matrix terms}\label{sec:prelim}
 
 We describe the computational model in the language of numerical linear
-algebra (see \cite{GSLW19,Lin22} for details).
+algebra (see \cite{GSLW19,Lin22} for details). We start with an overview of the model, then describe block encodings and QSVT solvers, and finally discuss what preconditioning means in this context.
 
 \paragraph{States and outputs.} A unit vector $v\in\C^{2^k}$ is stored in $k$
-qubits. Its entries cannot be read out. Repeated measurement gives
-estimates of quantities $v^*Ov$ for suitable Hermitian $O$, with additive error
-$\eta$. This costs $O(\eta^{-2})$ repetitions, or $O(\eta^{-1})$ with amplitude
+qubits. Its entries cannot be read out explicitly. Repeated measurements give estimates of quantities $v^*Ov$ for suitable Hermitian $O$, with additive error
+$\eta$. This costs $\mathcal{O}(\eta^{-2})$ repetitions, or $\mathcal{O}(\eta^{-1})$ with amplitude
 estimation \cite{BHMT02}. The output of a quantum solver is therefore a
 small number of scalar \emph{quantities of interest} (QoIs), such as
-$\langle w,y\rangle_M$ or the value of the objective, never the vector $x$.
+$\langle w,y\rangle_M$ or the value of the objective, never the vector $x$ itself.
 
-\paragraph{Block encodings.} A matrix $A$ with $\|A\|\le\alpha$ is \emph{block encoded}
+\paragraph{Block encodings.} A quantum computer can only apply unitary
+matrices: every gate, and hence every circuit, preserves the norm of the
+state vector and is invertible. A general matrix $A$ changes norms, may be
+singular and need not be square, so ``multiply by $A$'' is not an available
+operation. Instead, $A$ is embedded, after scaling, as a block of a larger
+unitary acting on additional qubits (ancillas); applying this unitary
+produces $Av$ in one block, mixed with other components in the rest. This is
+the dilation idea of Halmos and Sz.-Nagy, by which every contraction is a
+corner of a unitary.
+A matrix $A$ with $\|A\|\le\alpha$ is \emph{block encoded}
 with \emph{subnormalization} $\alpha$ if a unitary circuit $U$ satisfies
 \[
 U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
@@ -187,11 +188,17 @@ Every block of a unitary matrix has norm at most one, so $\alpha\ge\|A\|$ for
 \emph{every} block encoding. We call $\alpha=\|A\|$ the \emph{ideal
 subnormalization}. It is always attainable in principle, by a unitary
 dilation, but that dilation is a dense matrix without an efficient
-circuit. Efficient circuits are built from structure, and they usually pay
-more than $\|A\|$. How much more depends on the construction; examples are in
-the supplement (\texttt{nla\_for\_quantum.tex}). Applying $U$ to $[v;0]$ and keeping the first block
-(postselection) yields $Av/\|Av\|$. This succeeds with probability
-$\|Av\|^2/(\alpha\|v\|)^2$.
+circuit. Efficient circuits are built from structure, and they usually
+achieve only a subnormalization $\alpha>\|A\|$. Since the cost grows with $\alpha$
+(see~\eqref{eq:cost}), this excess is a price paid in every call. How large
+it is depends on the construction; examples are in
+the supplement (\texttt{nla\_for\_quantum.tex}).
+
+Applying $U$ to $[v;0]$ gives $[Av/\alpha;\,w]$ for some vector $w$. Measuring the
+ancillas and keeping the outcome that selects the first block
+(postselection) leaves the normalized vector $Av/\|Av\|$, independent of $\alpha$.
+This succeeds with probability $\|Av\|^2/(\alpha\|v\|)^2$, so $\alpha$ does not change
+the result, only how often it is obtained.
 
 A circuit is a product of unitary matrices (gates), each acting on a few
 of the tensor factors $\C^2$. For small problems, the whole product can be
@@ -236,9 +243,11 @@ minimum-norm solution:
 \begin{equation}\label{eq:eps}
 \Big\|\tilde z-\frac{\B^+b}{\|\B^+b\|}\Big\|\le\varepsilon .
 \end{equation}
-Throughout, $\varepsilon$ denotes this solver accuracy. The additive error of a
-measured scalar is $\eta$ (above). The target accuracy of a quantity of
-interest is $\mathrm{tol}$ (Section~\ref{sec:discussion}). Quantum
+Throughout, $\varepsilon$ denotes this solver accuracy. Two further accuracies
+must not be confused with $\varepsilon$: the statistical error $\eta$ with which a
+scalar such as $v^*Ov$ is estimated from repeated measurements, and the target accuracy $\mathrm{tol}$ of a quantity
+of interest, which has to cover the discretization error, the effect of $\varepsilon$
+and $\eta$ together (Section~\ref{sec:discussion}). Quantum
 singular value transformation (QSVT) \cite{GSLW19} applies an odd polynomial
 $p(\B/\alpha)$ of degree $D$ using $D$ calls to the block encoding.
 
@@ -260,7 +269,21 @@ p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p|\le1\ \text{ on }[-
 \]
 The bound $|p|\le1$ is needed because $p(\B/\alpha)$ must again be a block of a
 unitary. Since $p(0)=0$, the result is the scaled pseudoinverse
-$\delta(\B/\alpha)^+=\sigma_{\min}\B^+$. The cost of a solve has two factors.
+$\delta(\B/\alpha)^+=\sigma_{\min}\B^+$.
+
+\emph{How $p$ is built.} A natural odd candidate is a Neumann series in $t^2$:
+\[
+\frac1t=\frac{t}{1-(1-t^2)}\approx t\sum_{j=0}^{b-1}(1-t^2)^j=\frac{1-(1-t^2)^b}{t},
+\]
+which is Richardson iteration on the normal equations $\B^*\B z=\B^*b$. It is odd,
+vanishes at $t=0$ and treats negative eigenvalues correctly, but it needs
+$b\sim\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon)$ terms. Truncating its Chebyshev expansion reduces the
+degree to $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$ \cite{CKS17,GSLW19}, the same gain as Chebyshev
+semi-iteration over Richardson; scaling by about $\delta$ then ensures $|p|\le1$. In
+practice the phase factors are computed for a near-minimax odd
+approximation of $\delta/t$ \cite{DMWL21}.
+
+The cost of a solve has two factors.
 \begin{itemize}
 \item \emph{Cost per run (the degree).} In classical terms this is Chebyshev semi-iteration whose degree is
   fixed in advance, namely $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$. The $\log(\kappa_\alpha/\varepsilon)$
@@ -1310,6 +1333,12 @@ are robust in the discretization parameters. Open directions:
 \bibitem{JLMY25} S.~Jin, N.~Liu, C.~Ma, Y.~Yu, Quantum preconditioning method for
   finite difference discretizations of the Poisson equation via
   Schr\"odingerization, arXiv:2505.06866 (2025).
+\bibitem{Huang26} Huang, \'Alvarez Yuste, Guseynov, Liu, Gonz\'alez-Conde
+  \todo{verify initials}, Quantum algorithms for optimal control: large-scale
+  finite-horizon linear-quadratic regulation, arXiv:2610.26843 (2026).
+\bibitem{KSZ13} W.~Krendl, V.~Simoncini, W.~Zulehner, Stability estimates and
+  structural spectral properties of saddle point problems, \emph{Numer.\
+  Math.} 124 (2013) 183--213.
 \bibitem{KXZ16} T.~Kolev, J.~Xu, Y.~Zhu, Multilevel preconditioners for
   reaction-diffusion problems with discontinuous coefficients, \emph{J.\
   Sci.\ Comput.} 67 (2016) 324--350.
@@ -1343,6 +1372,12 @@ are robust in the discretization parameters. Open directions:
 \bibitem{RDW10} T.~Rees, H.~S.~Dollar, A.~J.~Wathen, Optimal solvers for
   PDE-constrained optimization, \emph{SIAM J. Sci. Comput.} 32 (2010)
   271--298.
+\bibitem{Sato25} Sato, Kato, Yano, Ito, Yamamoto \todo{verify initials}, Explicit
+  block-encoding for partial differential equation-constrained optimization,
+  arXiv:2511.14420 (2025).
+\bibitem{SG24} Surana, Gnanasekaran \todo{verify initials and title}, Variational quantum framework for
+  partial differential equation constrained optimization, arXiv:2405.16651
+  (2024).
 \bibitem{SS09} C.~Schwab, R.~Stevenson, Space-time adaptive wavelet methods for
   parabolic evolution problems, \emph{Math. Comp.} 78 (2009) 1293--1318.
 \bibitem{SZ07} J.~Sch\"oberl, W.~Zulehner, Symmetric indefinite preconditioners
