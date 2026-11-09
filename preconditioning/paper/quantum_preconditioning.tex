@@ -30,35 +30,34 @@
 
 \begin{abstract}
 Quantum linear system solvers cost a number of operations proportional to an
-\emph{effective} condition number. This number is the ratio of the
-normalization with which the matrix is embedded in a unitary circuit (its
-block encoding) to its smallest singular value. Preconditioning is
-therefore the main lever that numerical linear algebra has on quantum
-solvers. The rules differ from the classical ones, however:
-\begin{itemize}
-\item clustering of eigenvalues does not help;
-\item preconditioners must be applied by multiplication, not by inner
-  solves;
-\item every factor of a product must be well scaled.
-\end{itemize}
+\emph{effective} condition number: the ratio of the normalization with which
+the matrix is embedded in a unitary circuit (its block encoding) to its
+smallest singular value. Preconditioning is therefore the main lever that
+numerical linear algebra has on quantum solvers, but its rules differ from
+the classical ones. Clustering of eigenvalues does not help, preconditioners
+must be applied by multiplication rather than by inner solves, and every
+factor of a product must be encoded with a normalization close to its norm.
 We develop preconditioners under these rules for the saddle-point systems
 of PDE-constrained optimization. For distributed control of the Poisson
-equation, we combine a Sch\"oberl--Zulehner block preconditioner with an
-additive multilevel (BPX) factor. We apply it on both sides of the KKT
-matrix and factor the result as $\G^*\J\G$, where $\J$ is a single
-two-qubit reflection and $\G$ is well scaled. Building on the factorized
-multilevel block encodings of Deiml and Peterseim, which we formulate
-through quadrature points so that they cover $Q_k$ and $P_k$ elements, $\G$
-has a block encoding whose normalization grows only like $\sqrt{\log h^{-1}}$. The effective condition number is then bounded
-independently of the mesh size. With level weights that we introduce, it
-is also bounded in the regularization parameter, up to a constant fixed by
-the mass matrix. For the time-periodic heat equation, a quantum Fourier
-transform in time decouples the problem into frequency-wise saddle-point
-problems of the same form. We prove a $\sqrt3$ bound uniform in all
-parameters, and the coupling matrix becomes a scaled reflection.
-Numerical experiments in one, two and three dimensions confirm the
-bounds. We also discuss when an asymptotic quantum advantage can and
-cannot be expected.
+equation, we apply a Sch\"oberl--Zulehner block preconditioner, combined
+with an additive multilevel (BPX) factor, on both sides of the KKT matrix
+and factor the result as $\G^*\J\G$, where $\J$ is a single two-qubit
+reflection that carries the indefiniteness. Building on the multilevel
+block encodings of Deiml and Peterseim, which we formulate through
+quadrature points so that they cover $Q_k$ and $P_k$ elements, $\G$ has a
+block encoding whose normalization grows only like $\sqrt{\log h^{-1}}$, and the
+effective condition number is bounded independently of the mesh size.
+Adapting robust multilevel methods for singularly perturbed problems to
+this factored form, we use normalized level weights for which the spectral
+bounds are also independent of the regularization parameter, and we prove
+this with explicit constants. For the time-periodic heat equation, a
+quantum Fourier transform in time decouples the problem into
+frequency-wise saddle-point problems of the same form; the block
+preconditioner satisfies a $\sqrt3$ bound uniform in all parameters, and the
+coupling matrix becomes a scaled reflection, so that neither the number of
+time steps nor the step size enters the cost. Numerical experiments in one,
+two and three dimensions confirm the bounds. We also discuss when an
+asymptotic quantum advantage can and cannot be expected.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -265,23 +264,59 @@ even $p$ cannot approximate $1/\lambda$ on an indefinite spectrum.
 It evaluates the matrix function $p(\B/\alpha)$ for a fixed odd polynomial with
 \[
 p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p|\le1\ \text{ on }[-1,1],\qquad
-\delta=\frac{\sigma_{\min}}{\alpha}.
+\delta=\frac{\sigma_{\min}}{\alpha}=\frac1{\kappa_\alpha}.
 \]
+Here
+\[
+\kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \frac{\|\B\|}{\sigma_{\min}}=\kappa(\B)
+\]
+is the \emph{effective condition number} in the terminology of Deiml and
+Peterseim \cite[Def.~4.1]{DP26}. It is the ratio of the upper bound $1$ on the
+singular values of $\B/\alpha$, which is all that the block encoding
+guarantees, to its smallest nonzero singular value $\sigma_{\min}/\alpha$. The ordinary
+condition number would use the actual largest singular value $\|\B\|/\alpha$
+instead; the two agree only for the ideal subnormalization $\alpha=\|\B\|$.
 The bound $|p|\le1$ is needed because $p(\B/\alpha)$ must again be a block of a
 unitary. Since $p(0)=0$, the result is the scaled pseudoinverse
 $\delta(\B/\alpha)^+=\sigma_{\min}\B^+$.
 
-\emph{How $p$ is built.} A natural odd candidate is a Neumann series in $t^2$:
+\emph{How $p$ is built.} Since $1/t=t/(1-(1-t^2))$, a natural odd candidate is the
+truncated Neumann series in $t^2$,
 \[
-\frac1t=\frac{t}{1-(1-t^2)}\approx t\sum_{j=0}^{b-1}(1-t^2)^j=\frac{1-(1-t^2)^b}{t},
+s_m(t)=t\sum_{j=0}^{m-1}(1-t^2)^j=\frac{1-(1-t^2)^m}{t},
 \]
-which is Richardson iteration on the normal equations $\B^*\B z=\B^*b$. It is odd,
-vanishes at $t=0$ and treats negative eigenvalues correctly, but it needs
-$b\sim\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon)$ terms. Truncating its Chebyshev expansion reduces the
-degree to $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$ \cite{CKS17,GSLW19}, the same gain as Chebyshev
-semi-iteration over Richardson; scaling by about $\delta$ then ensures $|p|\le1$. In
-practice the phase factors are computed for a near-minimax odd
-approximation of $\delta/t$ \cite{DMWL21}.
+where the second form is the geometric sum with ratio $1-t^2$. It is odd,
+vanishes at $t=0$ and treats negative eigenvalues correctly. In matrix
+terms, $s_m(\B/\alpha)b$ is the result of $m$ steps of Richardson iteration,
+started at zero, on the normal equations $(\B^*\B/\alpha^2)z=\B^*b/\alpha$.
+
+How many terms are needed? The error in approximating $\delta/t$ by $\delta s_m(t)$ is
+\[
+\frac\delta t-\delta s_m(t)=\frac{\delta}{t}\,(1-t^2)^m .
+\]
+For $t\in[\delta,1]$ we have $\delta/t\le1$ and $0\le1-t^2\le1-\delta^2$, and $1-x\le e^{-x}$ gives
+\[
+\Big|\frac\delta t-\delta s_m(t)\Big|\le(1-\delta^2)^m\le e^{-m\delta^2}.
+\]
+Each additional term thus reduces the bound only by the factor $1-\delta^2$. For
+the normalized output to satisfy~\eqref{eq:eps}, the error must be below
+about $\varepsilon/\kappa_\alpha$, which holds as soon as
+\[
+m\ \ge\ \delta^{-2}\log(\kappa_\alpha/\varepsilon)=\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon),
+\]
+and $\delta s_m$ has degree $2m-1$. The factor $\kappa_\alpha^2$ is the condition number of
+the normal equations, and the count is that of Richardson iteration on
+them.
+
+Truncating the Chebyshev expansion of $s_m$ reduces the degree to
+$O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$ \cite{CKS17,GSLW19}, the same gain as Chebyshev
+semi-iteration over Richardson. One more point needs care: near $t=0$ the
+sum $s_m$ is not bounded by $1/\delta$ but reaches about $0.64\sqrt m$ (at $t\approx1.1/\sqrt m$),
+so $\delta s_m$ can exceed $1$ by a factor of order $\sqrt{\log(\kappa_\alpha/\varepsilon)}$. The
+standard constructions control this region separately, which changes the
+scaling by a constant or logarithmic factor but not the degree bound
+\cite{CKS17,GSLW19}. In practice the phase factors are computed for a
+near-minimax odd approximation of $\delta/t$ with $|p|\le1$ \cite{DMWL21}.
 
 The cost of a solve has two factors.
 \begin{itemize}
@@ -310,10 +345,10 @@ Multiplying the two, plain QSVT inversion costs $O(\kappa_\alpha^2\log(\kappa_\a
 Variable-time amplitude amplification \cite{CKS17} or the discrete adiabatic
 method \cite{Costa22} achieve the optimal
 \begin{equation}\label{eq:cost}
-O\big(\kappa_\alpha\log(1/\varepsilon)\big),\qquad \kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \kappa(\B).
+O\big(\kappa_\alpha\log(1/\varepsilon)\big)\quad\text{calls}.
 \end{equation}
-In both cases the cost is governed by $\kappa_\alpha$, the \emph{effective condition
-number} in the terminology of Deiml and Peterseim \cite[Def.~4.1]{DP26}.
+In both cases the cost is governed by the effective condition number
+$\kappa_\alpha$.
 
 \paragraph{What preconditioning means.} If solving means evaluating a
 polynomial, then preconditioning means \emph{choosing the matrix in which the
