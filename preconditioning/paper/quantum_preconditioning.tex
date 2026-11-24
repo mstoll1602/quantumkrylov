@@ -162,8 +162,15 @@ Section~\ref{sec:conclusions} concludes with an outlook.
 We describe the computational model in the language of numerical linear
 algebra (see \cite{GSLW19,Lin22} for details). We start with an overview of the model, then describe block encodings and QSVT solvers, and finally discuss what preconditioning means in this context.
 
-\paragraph{States and outputs.} A unit vector $v\in\C^{2^k}$ is stored in $k$
-qubits. Its entries cannot be read out explicitly. Repeated measurements give estimates of quantities $v^*Ov$ for suitable Hermitian $O$, with additive error
+\paragraph{States and outputs.} A system of $k$ qubits has the state space
+\[
+\C^2\otimes\C^2\otimes\cdots\otimes\C^2=\C^{2^k},
+\]
+one tensor (Kronecker) factor $\C^2$ per qubit. The standard basis vectors are
+the Kronecker products of $e_0,e_1\in\C^2$, so an index in $\{0,\dots,2^k-1\}$ is
+written in binary with one bit per qubit. Adding a qubit adds a factor
+$\C^2$ and doubles the dimension. A unit vector $v\in\C^{2^k}$ is stored in $k$
+qubits in this way. Its entries cannot be read out explicitly. Repeated measurements give estimates of quantities $v^*Ov$ for suitable Hermitian $O$, with additive error
 $\eta$. This costs $\mathcal{O}(\eta^{-2})$ repetitions, or $\mathcal{O}(\eta^{-1})$ with amplitude
 estimation \cite{BHMT02}. The output of a quantum solver is therefore a
 small number of scalar \emph{quantities of interest} (QoIs), such as
@@ -183,8 +190,10 @@ with \emph{subnormalization} $\alpha$ if a unitary circuit $U$ satisfies
 \[
 U=\begin{bmatrix}A/\alpha & *\\ * & *\end{bmatrix}.
 \]
-Every block of a unitary matrix has norm at most one, so $\alpha\ge\|A\|$ for
-\emph{every} block encoding. We call $\alpha=\|A\|$ the \emph{ideal
+Every block of a unitary matrix has norm at most one: $(A/\alpha)x$ is the
+first block of $U[x;0]$, whose norm is $\|x\|$, hence $\|(A/\alpha)x\|\le\|x\|$ for
+all $x$, i.e.\ $\alpha\ge\|A\|$. No block encoding, however it is constructed, can
+have a subnormalization below $\|A\|$. We call $\alpha=\|A\|$ the \emph{ideal
 subnormalization}. It is always attainable in principle, by a unitary
 dilation, but that dilation is a dense matrix without an efficient
 circuit. Efficient circuits are built from structure, and they usually
@@ -193,14 +202,25 @@ achieve only a subnormalization $\alpha>\|A\|$. Since the cost grows with $\alph
 it is depends on the construction; examples are in
 the supplement (\texttt{nla\_for\_quantum.tex}).
 
-Applying $U$ to $[v;0]$ gives $[Av/\alpha;\,w]$ for some vector $w$. Measuring the
-ancillas and keeping the outcome that selects the first block
-(postselection) leaves the normalized vector $Av/\|Av\|$, independent of $\alpha$.
-This succeeds with probability $\|Av\|^2/(\alpha\|v\|)^2$, so $\alpha$ does not change
-the result, only how often it is obtained.
+Measurement works as follows in matrix terms. If the state is a unit
+vector $\psi$ split into blocks according to the values of the ancillas, then
+measuring the ancillas selects block $j$ with probability equal to its
+squared norm $\|\psi_j\|^2$ (these sum to $\|\psi\|^2=1$), and the state afterwards is
+that block, renormalized. Since a state is a unit vector, $v$ is stored as
+$v/\|v\|$, and
+\[
+U\begin{bmatrix}v/\|v\|\\0\end{bmatrix}=\begin{bmatrix}Av/(\alpha\|v\|)\\ w\end{bmatrix}
+\]
+for some vector $w$. Keeping the outcome that selects the first block
+(postselection) therefore succeeds with probability
+$\|Av\|^2/(\alpha\|v\|)^2$, and leaves the renormalized block $Av/\|Av\|$, in which $\alpha$
+and $\|v\|$ cancel. So $\alpha$ does not change the result, only how often it is
+obtained.
 
-A circuit is a product of unitary matrices (gates), each acting on a few
-of the tensor factors $\C^2$. For small problems, the whole product can be
+A circuit is a product of unitary matrices (gates). Each gate acts on one
+or two of the tensor factors $\C^2$ introduced above and as the identity on
+the others, i.e.\ it has the form $I\otimes g\otimes I$ with a $2\times2$ or $4\times4$ unitary $g$,
+up to a permutation of the factors. For small problems, the whole product can be
 formed as an explicit matrix and checked. As an example, let $S$ be the
 cyclic shift (a permutation matrix) and $H=\frac1{\sqrt2}\begin{bmatrix}1&1\\1&-1\end{bmatrix}$. Then
 \[
@@ -212,31 +232,25 @@ This is the simplest instance of a linear combination of unitaries (LCU):
 $H$ prepares the weights, and the middle factor selects $I$ or $-S$ according
 to one extra qubit.
 Rectangular matrices are padded with zeros to square matrices of
-power-of-two size. Block encodings combine as follows (subnormalizations in
-brackets):
-\begin{itemize}
-\item products $AB$ $[\alpha_A\alpha_B]$;
-\item Kronecker products $A\otimes B$ $[\alpha_A\alpha_B]$;
-\item linear combinations $\sum_jc_jA_j$ $[\sum_j|c_j|\alpha_j]$;
-\item stacking $[A_1;\dots;A_k]$ $[(\sum_j\alpha_j^2)^{1/2}]$: prepare an index
-  register with amplitudes $\propto\alpha_j$ and apply $A_j$ controlled on
-  index $j$;
-\item concatenation $[A_1,\dots,A_k]$ $[(\sum_j\alpha_j^2)^{1/2}\le\sqrt k\max_j\alpha_j]$;
-\item sparse matrices with $s_r$ nonzeros per row and $s_c$ per column,
-  whose entries are computable by a circuit $[\sqrt{s_rs_c}\max_{ij}|a_{ij}|]$
-  \cite{GSLW19}.
-\end{itemize}
-Products need a fresh ancilla per factor; reusing one ancilla brings
-discarded components back into the leading block. Explicit unitary
-realizations of all rules, with derivations of the subnormalizations and
-numerical checks, are given in the supplement \emph{Block encodings for
-numerical linear algebraists} (\texttt{nla\_for\_quantum.tex}).
-In a product, the subnormalization can be far larger than the norm:
-$\alpha_A\alpha_B\ge\|A\|\|B\|\gg\|AB\|$ is possible.
+power-of-two size. Block encodings combine with the following
+subnormalizations: $\alpha_A\alpha_B$ for products $AB$ and Kronecker products $A\otimes B$;
+$\sum_j|c_j|\alpha_j$ for linear combinations $\sum_jc_jA_j$; $(\sum_j\alpha_j^2)^{1/2}\le\sqrt k\max_j\alpha_j$
+for stacking $[A_1;\dots;A_k]$ and concatenation $[A_1,\dots,A_k]$; and
+$\sqrt{s_rs_c}\max_{ij}|a_{ij}|$ for sparse matrices with $s_r$ nonzeros per row and $s_c$
+per column whose entries are computable by a circuit \cite{GSLW19}.
+Products need a fresh ancilla per factor, and their subnormalization can
+be far larger than the norm: $\alpha_A\alpha_B\ge\|A\|\|B\|\gg\|AB\|$ is possible. Explicit
+realizations of all rules, with derivations and numerical checks, are in
+the supplement (\texttt{nla\_for\_quantum.tex}).
 
 \paragraph{Solving.} Let $\B$ be Hermitian and block encoded with subnormalization
 $\alpha$, and let its nonzero eigenvalues satisfy $|\lambda|\ge\sigma_{\min}$. A quantum solver
-for $\B z=b$ outputs a unit vector $\tilde z$ (a quantum state). Its
+for $\B z=b$ outputs a unit vector $\tilde z$ (a quantum state) that approximates
+the direction of the minimum-norm solution $\B^+b$; since $b\in\operatorname{range}(\B)$ in our
+setting, this is a solution of the consistent but singular system, and the
+pseudoinverse only selects one among the solutions that differ by
+elements of $\ker\B$. The norm $\|\B^+b\|$ is not part of the output and must be
+estimated separately if it is needed. Its
 \emph{accuracy} $\varepsilon$ is measured in the Euclidean norm against the normalized
 minimum-norm solution:
 \begin{equation}\label{eq:eps}
@@ -260,25 +274,33 @@ Q\operatorname{diag}\big(\operatorname{sign}(\lambda_i)^D\big)\,p(|\Lambda|)\,Q^
 For odd $D$ this is $Qp(\Lambda)Q^*=p(\B)$. For even $D$ the signs are lost, so an
 even $p$ cannot approximate $1/\lambda$ on an indefinite spectrum.
 
-\emph{Solving means evaluating a polynomial.} A QSVT solver does not iterate.
-It evaluates the matrix function $p(\B/\alpha)$ for a fixed odd polynomial with
+\emph{Solving means evaluating a polynomial.} A QSVT solver does not iterate;
+it evaluates a fixed polynomial of the encoded matrix. Since the circuit only
+has access to the block $\B/\alpha$ of $U$, the relevant spectral quantities
+are those of $\B/\alpha$. Let
 \[
-p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p|\le1\ \text{ on }[-1,1],\qquad
-\delta=\frac{\sigma_{\min}}{\alpha}=\frac1{\kappa_\alpha}.
+\kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \frac{\|\B\|}{\sigma_{\min}}=\kappa(\B),
+\qquad \delta:=\frac{\sigma_{\min}}{\alpha}=\frac1{\kappa_\alpha},
 \]
-Here
-\[
-\kappa_\alpha:=\frac{\alpha}{\sigma_{\min}}\ \ge\ \frac{\|\B\|}{\sigma_{\min}}=\kappa(\B)
-\]
-is the \emph{effective condition number} in the terminology of Deiml and
-Peterseim \cite[Def.~4.1]{DP26}. It is the ratio of the upper bound $1$ on the
-singular values of $\B/\alpha$, which is all that the block encoding
-guarantees, to its smallest nonzero singular value $\sigma_{\min}/\alpha$. The ordinary
-condition number would use the actual largest singular value $\|\B\|/\alpha$
-instead; the two agree only for the ideal subnormalization $\alpha=\|\B\|$.
-The bound $|p|\le1$ is needed because $p(\B/\alpha)$ must again be a block of a
-unitary. Since $p(0)=0$, the result is the scaled pseudoinverse
-$\delta(\B/\alpha)^+=\sigma_{\min}\B^+$.
+with $\sigma_{\min}$ as above. Following Deiml and Peterseim \cite[Def.~4.1]{DP26}, we call $\kappa_\alpha$ the \emph{effective
+condition number}. It relates the smallest nonzero singular value
+$\sigma_{\min}/\alpha$ of $\B/\alpha$ to the bound $1$ that the block encoding
+guarantees, rather than to the actual largest singular value $\|\B\|/\alpha$;
+the two agree only for the ideal subnormalization $\alpha=\|\B\|$. The
+eigenvalues of $\B/\alpha$ thus lie in $[-1,-\delta]\cup\{0\}\cup[\delta,1]$, and the
+solver applies $p(\B/\alpha)$ for an odd polynomial $p$ with
+\begin{equation}\label{eq:pconditions}
+p(t)\approx\frac{\delta}{t}\ \text{ on }[\delta,1],\qquad |p(t)|\le1\ \text{ on }[-1,1].
+\end{equation}
+Since $p$ and $\delta/t$ are both odd, the approximation carries over to
+$[-1,-\delta]$, so the negative eigenvalues of the indefinite matrix are inverted
+with the correct sign, and $p(0)=0$ maps $\ker\B$ to zero. Hence
+$p(\B/\alpha)\approx\delta(\B/\alpha)^+=\sigma_{\min}\B^+$, the scaled pseudoinverse. The bound
+on all of $[-1,1]$, including the gap $(-\delta,\delta)$, is exactly the condition
+under which QSVT can implement an odd polynomial \cite{GSLW19}. The phase
+factors of the circuit are computed from $p$ alone, without knowledge of the
+spectrum of $\B$, so the bound cannot be restricted to the set where the
+eigenvalues lie; in particular $p$ must stay bounded in the gap.
 
 \emph{How $p$ is built.} Since $1/t=t/(1-(1-t^2))$, a natural odd candidate is the
 truncated Neumann series in $t^2$,
@@ -310,9 +332,11 @@ them.
 
 Truncating the Chebyshev expansion of $s_m$ reduces the degree to
 $O(\kappa_\alpha\log(\kappa_\alpha/\varepsilon))$ \cite{CKS17,GSLW19}, the same gain as Chebyshev
-semi-iteration over Richardson. One more point needs care: near $t=0$ the
-sum $s_m$ is not bounded by $1/\delta$ but reaches about $0.64\sqrt m$ (at $t\approx1.1/\sqrt m$),
-so $\delta s_m$ can exceed $1$ by a factor of order $\sqrt{\log(\kappa_\alpha/\varepsilon)}$. The
+semi-iteration over Richardson. One more point needs care: the error bound
+above uses $t\ge\delta$. The two forms of $s_m$ give $s_m(t)\le\min(mt,1/t)\le\sqrt m$, and
+this order is attained near $t\approx1/\sqrt m$, which lies in the gap. Hence $\delta s_m$
+reaches order $\delta\sqrt m=\sqrt{\log(\kappa_\alpha/\varepsilon)}$, which exceeds $1$ and
+violates~\eqref{eq:pconditions}. The
 standard constructions control this region separately, which changes the
 scaling by a constant or logarithmic factor but not the degree bound
 \cite{CKS17,GSLW19}. In practice the phase factors are computed for a
@@ -326,20 +350,32 @@ The cost of a solve has two factors.
   normalized output to satisfy~\eqref{eq:eps}. The polynomial
   depends only on the interval, not on $b$ or the actual spectrum. Unlike CG
   or MINRES, it cannot adapt.
-\item \emph{Number of runs (the success probability).} Postselecting $\sigma_{\min}\B^+b$ succeeds with probability
+\item \emph{Number of runs (the success probability).} Let $W$ be the unitary
+  of the whole solver circuit and $u_0=[b/\|b\|;0]$ its input. Its output splits into
+  the wanted first block and the rest,
   \[
-  a^2=\frac{\|\sigma_{\min}\B^+b\|^2}{\|b\|^2}\ \ge\ \frac1{\kappa_\alpha^2}.
+  \psi=Wu_0=a\,g+\sqrt{1-a^2}\,h,\qquad
+  a=\frac{\|\sigma_{\min}\B^+b\|}{\|b\|}\ \ge\ \frac1{\kappa_\alpha},
   \]
-  Simply repeating the run until it succeeds would cost about $1/a^2$ runs.
-  \emph{Amplitude amplification} \cite{BHMT02} needs only about $\pi/(4a)\le\kappa_\alpha$
-  rounds. It uses two reflections: one flips the sign of the wanted
-  block, the other reflects about the output vector of the circuit (one
-  application of the circuit and its adjoint). Their product is a
-  rotation by $2\arcsin a$ in the plane spanned by the wanted and the
-  unwanted part, so $k$ rounds turn the success amplitude $a$ into
-  $\sin((2k+1)\arcsin a)$, which is close to one for $k\approx\pi/(4a)$.
-  In polynomial terms this is again QSVT, now of the scalar $a$ with the
-  odd Chebyshev polynomial $T_{2k+1}$. Details are in the supplement.
+  with unit vectors $g\perp h$, where $g$ carries the normalized solution. A
+  measurement returns $g$ with probability $a^2$, so repeating the run until it
+  succeeds costs about $1/a^2\le\kappa_\alpha^2$ runs. \emph{Amplitude amplification}
+  \cite{BHMT02} instead increases the weight of $g$ before measuring. It uses
+  two reflections, both unitary,
+  \[
+  S_1=I-2\Pi,\qquad S_2=2\psi\psi^*-I=W(2u_0u_0^*-I)W^*,
+  \]
+  where $\Pi$ is the diagonal projector onto the first block. $S_1$ flips the
+  sign of the $g$-component, and $S_2$ reflects about $\psi$ at the price of one
+  application of $W$ and one of $W^*$. Both map the plane $\operatorname{span}\{g,h\}$
+  into itself, and in this plane $\psi=\sin\theta\,g+\cos\theta\,h$ with $\sin\theta=a$.
+  The product of two reflections is a rotation by twice the angle between
+  their mirror lines, here $h$ and $\psi$, so $S_2S_1$ rotates by $2\theta$
+  towards $g$. After $k$ rounds the output is
+  $\sin((2k+1)\theta)\,g+\cos((2k+1)\theta)\,h$, and for $k\approx\pi/(4\theta)\approx\pi/(4a)\le\kappa_\alpha$
+  almost all weight lies on $g$. Thus $O(\kappa_\alpha)$ rounds replace $O(\kappa_\alpha^2)$
+  repetitions. In polynomial terms this is again QSVT, now of the scalar $a$
+  with the odd Chebyshev polynomial $T_{2k+1}$; details are in the supplement.
 \end{itemize}
 Multiplying the two, plain QSVT inversion costs $O(\kappa_\alpha^2\log(\kappa_\alpha/\varepsilon))$ calls.
 Variable-time amplitude amplification \cite{CKS17} or the discrete adiabatic
@@ -383,8 +419,14 @@ middle factor $\J$ costs nothing, so $\alpha_\B=\alpha_G^2$, which is $\|G\|^2$ 
 case. The value for the explicit construction is still to be measured
 (Section~\ref{sec:poisson}).
 
-\emph{Two levers, one classical and one quantum.} The ratio
-$\delta=\sigma_{\min}(\B)/\alpha_\B$ can be spoiled from either side.
+\emph{Two levers, one classical and one quantum.} The ratio factors as
+\[
+\delta=\frac{\sigma_{\min}(\B)}{\alpha_\B}=\frac{\sigma_{\min}(\B)}{\|\B\|}\cdot\frac{\|\B\|}{\alpha_\B}
+=\frac1{\kappa(\B)}\cdot\frac{\|\B\|}{\alpha_\B},
+\]
+and it is small if either factor is small. Both factors are at most one, the
+second because $\alpha_\B\ge\|\B\|$ for every block encoding. Each lever asks for
+one factor to be bounded below independently of $h$ and $\beta$.
 \begin{enumerate}
 \item \emph{Spectral (classical).} $\sigma_{\min}(\B)$ must be comparable to $\|\B\|$.
   This is ordinary spectral equivalence of $P$ and $\A$, i.e. eigenvalue

@@ -101,6 +101,39 @@ A measurement thus picks one block at random, with probability equal to
 its squared norm, and renormalizes it. The norm of the selected block is
 lost; only its direction survives.
 
+\paragraph{Why the vector cannot be read out.} The entries of a state
+$\psi\in\C^N$, $N=2^q$, are not stored anywhere as numbers that could be
+inspected. The only access is measurement, and three facts make reading
+out $\psi$ expensive.
+\begin{itemize}
+\item \emph{One run gives one index.} Measuring all $q$ qubits is the measurement
+  rule above with blocks of size one: it returns a single index $i$ with
+  probability $|\psi_i|^2$, and the state afterwards is the basis vector $e_i$.
+  The amplitudes $\psi_i$ themselves are never returned, only one random
+  sample from the distribution $(|\psi_i|^2)_i$, and the state is destroyed in
+  the process.
+\item \emph{A state cannot be copied.} There is no unitary that maps
+  $\psi\otimes e_0$ to $\psi\otimes\psi$ for every $\psi$ (the no-cloning theorem; the map is
+  not linear). Every further sample therefore needs a fresh preparation
+  of $\psi$, i.e.\ a complete new run of the solver that produced it.
+\item \emph{Moduli are not enough.} Samples in the standard basis only
+  estimate $|\psi_i|^2$. Signs and phases require measurements after further
+  unitaries (other bases), i.e.\ even more runs.
+\end{itemize}
+Estimating all $N$ entries to accuracy $\eta$ in this way (state tomography)
+needs of the order of $N/\eta^2$ runs, up to logarithmic factors. For $\psi$
+the solution of a linear system this means $N$ times the cost of the
+quantum solver, which is already more than a classical solver needs: the
+exponential compression of $\C^N$ into $q=\log_2N$ qubits is lost at
+readout. What can be obtained cheaply are \emph{scalars}. For a Hermitian
+$O$ with an efficient circuit, the expectation $\psi^*O\psi$ is the mean of the
+outcomes of a suitable measurement, and averaging over $O(1/\eta^2)$ runs
+estimates it to accuracy $\eta$, or $O(1/\eta)$ runs with amplitude estimation,
+independently of $N$. Overlaps $|w^*\psi|^2$ with a vector $w$ that can itself be
+prepared ($O=ww^*$) are the typical case. This is why a quantum solver is
+only useful when the output wanted is a small number of such quantities
+of interest, not the solution vector.
+
 \paragraph{Block encodings.} A unitary $U\in\C^{2^an\times2^an}$ is a block encoding of
 $A\in\C^{n\times n}$ with subnormalization $\alpha$ if its leading block is $A/\alpha$:
 \[
